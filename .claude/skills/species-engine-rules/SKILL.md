@@ -5,7 +5,7 @@ description: How the US Tree Map species engine ranks trees for a hex. Use befor
 
 # Species engine rules (v0 draft)
 
-Status: proposed during planning. Every threshold below is a v0 number to confirm with Marco in Phase 0; after that, change this file first, then the code. The engine is a screening tool: it narrows choices and explains each one. The UI says so next to the list.
+Status: v0 thresholds confirmed by Marco on Oct 27, 2026 (`docs/numbers-v0.md`), with decisions D3–D8 applied. From now on, change this file first, then the code. The engine is a screening tool: it narrows choices and explains each one. The UI says so next to the list.
 
 ## Inputs
 

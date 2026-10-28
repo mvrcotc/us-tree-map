@@ -5,7 +5,7 @@ description: Performance budgets for the US Tree Map and how to measure them. Us
 
 # Performance budget (v0)
 
-Status: v0 numbers set Oct 27, 2026 from measured probe builds (see Baseline). Marco confirms them in Phase 0. A phase isn't done until its rows pass on the reference device, with results saved in `docs/qa/`. Raise a budget only with Marco's OK, and write the reason here.
+Status: v0 numbers set Oct 27, 2026 from measured probe builds (see Baseline); confirmed by Marco on Oct 27, 2026 (`docs/numbers-v0.md`). A phase isn't done until its rows pass on the reference device, with results saved in `docs/qa/`. Raise a budget only with Marco's OK, and write the reason here.
 
 ## Reference setup
 
