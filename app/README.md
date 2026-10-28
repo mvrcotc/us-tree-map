@@ -1,32 +1,15 @@
-# React + TypeScript + Vite
+# App
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript + Vite. A MapLibre street map owns the camera; a transparent three.js layer (React Three Fiber) draws the hex columns on top, synced from a MapLibre custom layer (`src/stage/mapSync.ts`, CLAUDE.md → Gotchas).
 
-Currently, two official plugins are available:
+Commands are in CLAUDE.md → Commands. Layout:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `src/stage/`: map, sync layer, hex columns (instanced, shader morphs), effects, test hooks
+- `src/data/`: data worker (hyparquet + fzstd, h3-js) and synthetic Phase 0 values
+- `src/theme/`: design tokens, ramps, muted basemap, palette tests
+- `src/charts/`: ECharts panels, loaded after the first frame with hexes
+- `src/mock/`: `/mock` layout for review
+- `e2e/`: Playwright (alignment, true data colors, smoke, mock)
+- `scripts/size.mjs`: bundle budgets (perf-budget L1, L2)
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Phase 0 values on screen are synthetic and labeled so.

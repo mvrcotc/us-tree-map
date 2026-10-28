@@ -9,8 +9,11 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 
 ## Status (update when a gate passes)
 
-- Current phase: **0 · Setup**. Gate: mockup and data contract approved.
+- Current phase: **0 · Setup**, steps 0–8 done (Oct 27, 2026). Gate: Marco approves the mock (`docs/img/mock-v1.png`, route `/mock`) and the data contract.
 - Pilot state: **Wisconsin** (chosen Oct 27, 2026; see `docs/pilot-state.md`).
+- Decisions D1–D8 are made (data contract → Decisions); v0 numbers confirmed (`docs/numbers-v0.md`).
+- Waiting on outside replies: Tree Equity Score permission (D7; draft in `docs/drafts/tes-permission-email.md`), NAPIS / Pest Tracker terms (not confirmed).
+- Repo: https://github.com/mvrcotc/us-tree-map (public, MIT).
 
 ## Hard rules
 
@@ -68,10 +71,18 @@ docs/       PLAN.md, FIRST_PROMPT.md, img/, qa/ (gate evidence)
 
 ## Commands
 
-Fill in during Phase 0 and keep current.
+App (`cd app`; Node 22, npm):
 
-- app: TBD (dev, test, build, lint, e2e)
-- pipeline: TBD (env setup, run one layer, test)
+- `npm run dev`: dev server; serves `../data/out/` at `/data/`. `/mock` is the layout mock; `?test` installs `window.__stage` for e2e.
+- `npm run typecheck` · `npm run lint` (oxlint) · `npm test` (Vitest)
+- `npm run build`, then `npm run size`: bundle budgets L1/L2 (perf-budget)
+- `npm run e2e`: Playwright against `vite preview` (builds first; ~10 min on software WebGL). Writes `docs/img/smoke.png` and `docs/img/mock-v1.png`. First time: `npx playwright install chromium`.
+
+Pipeline (`cd pipeline`; Python 3.13 via uv, installed at `~/.local/bin/uv`):
+
+- `uv sync`: create the environment
+- `uv run treemap-pipeline [geo] [hex_base]`: run all steps or some; writes `data/out/v1/` and `docs/qa/pipeline-timing.json`
+- `uv run pytest`
 
 ## How to work
 
