@@ -48,7 +48,8 @@ def fetch(source) -> list[dict]:
 
 
 def clips_or_exit(source) -> dict:
-    missing = [y for y in source.years if not source.clip_path(y).exists()]
+    # A clip counts only with its sidecar, which fetch writes last (sources.zipclip).
+    missing = [y for y in source.years if not (source.clip_path(y).exists() and source.clip_path(y).with_suffix('.window.json').exists())]
     if missing:
         raise SystemExit(f"{source.source} clips missing for {missing[0]}–{missing[-1]}: run `uv run treemap-pipeline fetch_{source.source}` first")
     return {y: source.clip_path(y) for y in source.years}

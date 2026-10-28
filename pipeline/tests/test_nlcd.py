@@ -128,3 +128,20 @@ def test_fetch_all_with_workers(raw, cover):
         make_zip(raw / SRC.zip_name(year), zipfile.ZIP_STORED, year)
     clips = SRC.fetch_all(GEOMETRY, cover, years=[2024, 2025], workers=2)
     assert sorted(clips) == [2024, 2025] and all(p.exists() for p in clips.values())
+
+
+def test_unreadable_sidecar_means_reclip(raw, cover):
+    make_zip(raw / SRC.zip_name(2025), zipfile.ZIP_STORED)
+    path = SRC.clip(2025, GEOMETRY, cover)
+    path.with_suffix(".window.json").write_text('{"crs": ')  # cut short by a crash
+    mtime = os.path.getmtime(path)
+    SRC.clip(2025, GEOMETRY, cover)
+    assert os.path.getmtime(path) != mtime
+    assert json.loads(path.with_suffix(".window.json").read_text())["width"] > 0
+
+
+def test_fetch_all_names_the_failed_year(raw, cover):
+    make_zip(raw / SRC.zip_name(2024), zipfile.ZIP_STORED, 2024)
+    (raw / SRC.zip_name(2025)).write_bytes(b"not a zip")
+    with pytest.raises(RuntimeError, match="nlcd 2025: clip failed"):
+        SRC.fetch_all(GEOMETRY, cover, years=[2024, 2025], workers=2)

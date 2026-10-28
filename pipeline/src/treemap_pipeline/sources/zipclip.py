@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +31,7 @@ GDAL_ENV = {
     "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
     "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".zip,.tif",
     "CPL_VSIL_CURL_CHUNK_SIZE": str(4 << 20),  # 4 MB range requests instead of 16 kB
+    "CPL_VSIL_CURL_CACHE_SIZE": str(128 << 20),  # process-wide region cache, shared by the fetch workers
     "VSI_CACHE": "TRUE",
     "GDAL_HTTP_MULTIRANGE": "YES",
     "GDAL_HTTP_MERGE_CONSECUTIVE_RANGES": "YES",
@@ -79,7 +80,7 @@ class ZipRaster:
         with rasterio.Env(**GDAL_ENV), rasterio.open(self.source_path(year)) as src:
             window = raster.clip_window(src, geometry, cover_cells)
             record = _window_record(src, window)
-            if dest.exists() and sidecar.exists() and json.loads(sidecar.read_text()) == record:
+            if dest.exists() and _read_record(sidecar) == record:
                 return dest
             tmp = dest.with_suffix(".part.tif")
             profile = src.profile | {
@@ -97,15 +98,26 @@ class ZipRaster:
                     rows = min(raster.STRIP_ROWS, record["height"] - r0)
                     block = src.read(1, window=Window(window.col_off, window.row_off + r0, window.width, rows))
                     dst.write(block, 1, window=Window(0, r0, window.width, rows))
+            # Tif first, then the sidecar: a crash in between leaves a new tif with an old or
+        # missing sidecar, which is re-clipped next time, never reused with a wrong window.
         tmp.rename(dest)
-        sidecar.write_text(json.dumps(record))
+        sidecar_tmp = sidecar.with_suffix(".tmp")
+        sidecar_tmp.write_text(json.dumps(record))
+        sidecar_tmp.rename(sidecar)
         return dest
 
     def fetch_all(self, geometry: dict, cover_cells: np.ndarray, years=None, workers: int = 1) -> dict[int, Path]:
         """Clip every year (`workers` at a time); fail unless all clips share one grid."""
         years = list(self.years if years is None else years)
+        clips = {}
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            clips = dict(zip(years, pool.map(lambda y: self.clip(y, geometry, cover_cells), years)))
+            futures = {pool.submit(self.clip, y, geometry, cover_cells): y for y in years}
+            for done in as_completed(futures):
+                try:
+                    clips[futures[done]] = done.result()
+                except Exception as e:
+                    pool.shutdown(wait=False, cancel_futures=True)  # stop queued years; running ones finish
+                    raise RuntimeError(f"{self.source} {futures[done]}: clip failed: {e}") from e
         records = {json.dumps(json.loads(p.with_suffix(".window.json").read_text()), sort_keys=True) for p in clips.values()}
         if len(records) != 1:
             raise ValueError(f"{self.source}: years are on {len(records)} different grids; expected one")
@@ -167,6 +179,14 @@ def _tif_member(zf: zipfile.ZipFile) -> zipfile.ZipInfo:
     if len(tifs) != 1:
         raise ValueError(f"expected one .tif in the zip, found {[i.filename for i in tifs]}")
     return tifs[0]
+
+
+def _read_record(sidecar: Path) -> dict | None:
+    """The sidecar's window record, or None if it is missing or unreadable (then re-clip)."""
+    try:
+        return json.loads(sidecar.read_text())
+    except (OSError, ValueError):
+        return None
 
 
 def _window_record(src: rasterio.DatasetReader, window: Window) -> dict:
