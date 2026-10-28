@@ -12,7 +12,7 @@ import h3.api.basic_int as h3
 import numpy as np
 import pyarrow as pa
 
-from treemap_pipeline import config
+from treemap_pipeline import config, h3util
 
 SCHEMA = pa.schema(
     [
@@ -37,13 +37,13 @@ def cells_in_polygon(geometry: dict, res: int) -> np.ndarray:
 
 
 def parents(cells: np.ndarray, res: int) -> np.ndarray:
-    return np.unique(np.fromiter((h3.cell_to_parent(int(c), res) for c in cells), dtype=np.uint64, count=len(cells)))
+    return np.unique(h3util.parents(cells, res))
 
 
 def table_for(cells: np.ndarray, res: int) -> pa.Table:
     cells = np.sort(cells)
     n = len(cells)
-    p3 = np.fromiter((h3.cell_to_parent(int(c), config.RES_PARTITION) for c in cells), dtype=np.uint64, count=n)
+    p3 = h3util.parents(cells, config.RES_PARTITION)
     area = np.fromiter((h3.cell_area(int(c), unit="km^2") for c in cells), dtype=np.float32, count=n)
     columns = {
         "h3": pa.array(cells, pa.uint64()),
