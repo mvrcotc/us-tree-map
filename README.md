@@ -11,4 +11,4 @@ A free, public-good 3D map of US tree history, climate fit and pest risk, with l
 
 It is a screening tool, not planting advice: every recommendation shows its reasons, its sources and a confidence flag.
 
-License: to be chosen in Phase 0. Published data keeps each source's terms.
+License: code under MIT ([LICENSE](LICENSE)). Published data keeps each source's terms.
