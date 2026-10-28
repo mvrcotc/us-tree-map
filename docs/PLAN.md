@@ -24,6 +24,8 @@ An animated 3D map of US tree history, climate fit and pest risk with linked cha
     - **Changes:** the projection is Web Mercator, not equal-area (northern hexes look up to about 8% larger across Pennsylvania; tooltips and charts show exact values). MapLibre owns the camera and all input. Depth of field is dropped, because it would blur only the hex layer. At city zoom the hexes become a translucent MapLibre layer under the street labels.
     - **Size:** the overlay probe (React, three.js, React Three Fiber, three effects, MapLibre with its worker, h3-js) came to 884 kB of JavaScript, gzip, vs. about 811 kB for the deck.gl + MapLibre probe. MapLibre loads up front because it runs the camera.
 
+12. **Years run 1985–2025** (Marco, Oct 28, 2026). Annual NLCD Collection 1.2 and USFS TCC v2025-6 both cover 1985–2025, replacing Collection 1.1 (to 2024) and TCC v2023.5 (to 2023) in correction 3 and the sections below. The time control ends its annual run at 2025 (data contract D1, D2).
+
 Full source list, versions and licenses: `.claude/skills/tree-map-data-contract/SKILL.md`.
 
 ## Product

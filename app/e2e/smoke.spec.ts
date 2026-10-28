@@ -6,7 +6,7 @@ test('smoke: map, synced 3D columns, synthetic label, chart; saves docs/img/smok
   await openStage(page)
   await expect(page.getByTestId('synthetic-label')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'State mean score by year' })).toBeVisible()
-  await expect(page.getByRole('slider')).toHaveValue('2024')
+  await expect(page.getByRole('slider')).toHaveValue('2025')
   await page.waitForTimeout(1500) // let street-map tiles settle
   await page.screenshot({ path: path.resolve(import.meta.dirname, '../../docs/img/smoke.png') })
 })

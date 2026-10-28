@@ -5,7 +5,7 @@ description: The US Tree Map data contract. Use before writing or changing pipel
 
 # US Tree Map data contract (v1)
 
-Status: **approved by Marco on Oct 27, 2026** (Phase 0 gate), with decisions D1–D8 made and the Verified column filled. This file is now the law: code follows it, and every change starts here with Marco's OK. Open source checks (`bps` size and terms, `ids` access, `napis` and `tes` terms) are tracked in their rows and in CLAUDE.md → Status.
+Status: **approved by Marco on Oct 27, 2026** (Phase 0 gate), with decisions D1–D8 made and the Verified column filled. This file is now the law: code follows it, and every change starts here with Marco's OK. Revised Oct 28, 2026 (Marco): Annual NLCD 1.2 and TCC v2025-6, years to 2025 (D1, D2). Open source checks (`bps` size and terms, `ids` access, `napis` and `tes` terms) are tracked in their rows and in CLAUDE.md → Status.
 
 ## Global rules
 
@@ -23,8 +23,8 @@ Status: **approved by Marco on Oct 27, 2026** (Phase 0 gate), with decisions D1�
 | id | Source | Version and coverage | Used for | License / terms | Verified |
 | --- | --- | --- | --- | --- | --- |
 | `bps` | LANDFIRE Biophysical Settings | **LF 2020 (LF 2.2.0)** is the newest CONUS BPS (LANDFIRE Product Service lists LF2020_BPS and LF2016_BPS for CONUS; LF2023_BPS is Alaska only). Modeled pre-Euro-American-settlement vegetation potential, not observed history | Past vegetation | US federal product (USGS/USFS); explicit terms statement unverified (landfire.gov returned 503 on Oct 27) | 2026-10-27: version and access via LFPS API (`lfps.usgs.gov`, clip to the Wisconsin bbox). 2026-10-28: landfire.gov and LFPS respond; LFPS `/api/products` lists `LF2020_BPS` (CONUS), `LF2016_BPS` (CONUS), `LF2023_BPS` (not CONUS). Clip size estimated from the window (≈ 19,300 × 19,700 px at 30 m): about 100–300 MB, confirmed on download. Terms: the USGS catalog marks a LANDFIRE product CC0 1.0 (checked on the MFRI record, not the BpS record); BpS record terms unverified |
-| `nlcd` | Annual NLCD Collection 1.1 Land Cover (USGS) | 1985–2024, 16 classes, CONUS, released 2025-06-25 | Land-cover shares per year | US federal (USGS); confirm citation | Years and classes 2026-10-27. 2026-10-28: **Collection 1.2 is out** (revised 2026-06-30, 1985–2025; ScienceBase item 655ceb8ad34ee4b6e05cc51a); MRLC lists per-year CONUS zips `Annual_NLCD_LndCov_{year}_CU_C1V2.zip` under `mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/`. Size and range-read support unverified (the download host did not answer on Oct 28). Version switch needs Marco's OK |
-| `tcc` | USFS Tree Canopy Cover, NLCD TCC | v2023.5: annual 1985–2023, 30 m, CONUS. Earth Engine lists a newer 2025-6 version | Canopy % per year | "Can be used without additional permissions or fees"; cite USDA Forest Service | 2026-10-27. 2026-10-28: the raster gateway now lists **only v2025-6** (1985–2025) for CONUS: `docs/v2025-6/nlcd_tcc_conus_{year}_v2025-6_wgs84.zip`, about 3.6 GB per year. Each zip stores (uncompressed) one tiled 512×512, deflate GeoTIFF: uint8, nodata 255, 30 m Albers on WGS84, with overviews. The server takes range requests, so `/vsizip//vsicurl/` reads only the Wisconsin + 10 km window (≈ 381 Mpx; measured ≈ 7 min per year over the network). Version switch needs Marco's OK |
+| `nlcd` | Annual NLCD Collection 1.2 Land Cover (USGS) | 1985–2025, 16 classes, CONUS, revised 2026-06-30 (switched from 1.1 by Marco, Oct 28, 2026) | Land-cover shares per year | US federal (USGS); confirm citation | Years and classes 2026-10-27. 2026-10-28: **Collection 1.2 is out** (revised 2026-06-30, 1985–2025; ScienceBase item 655ceb8ad34ee4b6e05cc51a); MRLC lists per-year CONUS zips `Annual_NLCD_LndCov_{year}_CU_C1V2.zip` under `mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/`. Size and range-read support unverified (the download host did not answer on Oct 28) |
+| `tcc` | USFS Tree Canopy Cover, NLCD TCC | **v2025-6**: annual 1985–2025, 30 m, CONUS (switched from v2023.5 by Marco, Oct 28, 2026) | Canopy % per year | "Can be used without additional permissions or fees"; cite USDA Forest Service | 2026-10-27. 2026-10-28: the raster gateway now lists **only v2025-6** (1985–2025) for CONUS: `docs/v2025-6/nlcd_tcc_conus_{year}_v2025-6_wgs84.zip`, about 3.6 GB per year. Each zip stores (uncompressed) one tiled 512×512, deflate GeoTIFF: uint8, nodata 255, 30 m Albers on WGS84, with overviews. The server takes range requests, so `/vsizip//vsicurl/` reads only the Wisconsin + 10 km window (≈ 381 Mpx; measured ≈ 7 min per year over the network) |
 | `treemap` | TreeMap 2023 CONUS (RDS-2026-0038) | Circa 2023, 30 m, forested pixels only; raster of imputed FIA plot ids + tree-list CSV | Current species composition | "Can be used without additional permissions or fees"; cite the publication | 2026-10-27. 2026-10-28: one `RDS-2026-0038.zip`, 4.87 GB (sha256 3482…abb7) + a 26 kB metadata zip. Tree-list field names: only `PLT_CN` is named on the page; the rest come from the metadata in step 7 |
 | `phzm` | 2023 USDA Plant Hardiness Zone Map GIS data (PRISM, Oregon State) | 1991–2020 data, about 800 m | Hardiness zone | Altered or derived maps must say "not the official USDA map" and drop USDA/OSU logos | 2026-10-28: terms re-read on prism.oregonstate.edu/phzm: OSU owns the datasets; free to reproduce and redistribute; maps derived from them must show both logos, **unless** the data are altered, in which case a prominent "not the official USDA Plant Hardiness Zone Map" disclaimer is required and both logos removed. Hex summaries are altered data, so: disclaimer, no logos. File `phzm_us_grid_2023.zip`, 41.1 MB |
 | `atlas` | DISTRIB-II habitat suitability, Climate Change Tree Atlas v4 (RDS-2019-0029) | 125 eastern species; baseline 1981–2010; future 2070–2099 only; CCSM4, GFDL CM3, HadGEM2-ES × RCP 4.5/8.5; 10 km / 20 km hybrid lattice; shapefiles | Climate fit | "Can be used without additional permissions or fees"; cite Peters et al. 2019 (dataset and Ecology and Evolution paper) | 2026-10-27. 2026-10-28: one `RDS-2019-0029.zip`, 159.5 MB. The RDS page has no high/medium/low reliability field; the species count reads 125 in the abstract and 135 in the citation title (checked in step 8) |
@@ -67,7 +67,7 @@ Types are DuckDB/Parquet types. All hex tables also have `h3`, `res`, `p3`.
 
 BpS code → group mapping lives in `pipeline/mappings/bps_groups.csv` (one row per code, with the LANDFIRE vegetation-group attribute it came from). Marco reviews it in Phase 1.
 
-### `hex_landcover` (one row per hex per year, 1985–2024, Annual NLCD)
+### `hex_landcover` (one row per hex per year, 1985–2025, Annual NLCD)
 Fractions of valid pixels; they sum to 1 (± 1e-6).
 | column | NLCD classes |
 | --- | --- |
@@ -85,7 +85,7 @@ Fractions of valid pixels; they sum to 1 (± 1e-6).
 
 Chart groups (UI): Forest = forest + woody wetland; Grass/pasture; Cropland; Developed; Other = the rest.
 
-### `hex_canopy` (one row per hex per year, 1985–2023, USFS TCC)
+### `hex_canopy` (one row per hex per year, 1985–2025, USFS TCC)
 | column | type | meaning |
 | --- | --- | --- |
 | `canopy_frac` | FLOAT | mean tree canopy over valid pixels (TCC % / 100) |
@@ -185,8 +185,8 @@ Pooling: assign Atlas lattice cells to a res-3 cell by centroid. If the pool cov
 
 ## Decisions (made by Marco, Oct 27, 2026)
 
-- D1. **No 2050 step.** The time control runs pre-settlement → 1985 … 2024 → 2070–2099. A mid-century source can be added later as its own layer.
-- D2. **Canopy: NLCD TCC** (`tcc`). The slider runs to 2024; at 2024 the canopy layer shows its 2023 values with a visible "latest: 2023" badge in the legend, tooltip and chart. The same rule applies to any layer whose years end before the slider's year: show its latest earlier year, always labeled with that year.
+- D1. **No 2050 step.** The time control runs pre-settlement → 1985 … 2025 → 2070–2099. A mid-century source can be added later as its own layer.
+- D2. **Canopy: NLCD TCC** (`tcc`, v2025-6). The slider runs 1985–2025, and both Annual NLCD 1.2 and TCC v2025-6 cover every year of it (revised by Marco, Oct 28, 2026; it was 2024 with a "latest: 2023" canopy badge). The rule stays for any layer whose years end before the slider's year: show its latest earlier year, always labeled with that year in the legend, tooltip and chart.
 - D3. **Candidates: the 125 Tree Atlas species only** for v1. Urban species without projections wait until after launch.
 - D4. **Need outside TES coverage is NULL** (not applicable). The engine skips the need component there without lowering confidence (`species-engine-rules` → Step 6).
 - D5. **Pests:** IDS uses the last 10 survey years; "nearby" means the hex or its res-6 ring of neighbors (`grid_disk` k = 1, about 10 km). NAPIS stays county-level. `hex_pests` rows from IDS carry `level = 'hex'` and already include the ring.

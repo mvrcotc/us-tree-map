@@ -8,6 +8,7 @@ import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { HexData } from '../data/types'
+import { YEAR_MAX, YEAR_MIN } from '../config'
 import { useStore } from '../store'
 
 echarts.use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
@@ -77,7 +78,7 @@ export default function YearPanel({ data }: { data: HexData }) {
           </table>
         </div>
       ) : (
-        <div ref={el} className="h-40" role="img" aria-label={`Line chart of the synthetic state mean score, 1985 to 2024; ${year} marked`} />
+        <div ref={el} className="h-40" role="img" aria-label={`Line chart of the synthetic state mean score, ${YEAR_MIN} to ${YEAR_MAX}; ${year} marked`} />
       )}
       <footer className="mt-2 text-xs text-ink-2">Source: synthetic data (Phase 0 smoke test)</footer>
     </section>

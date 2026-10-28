@@ -222,7 +222,7 @@ function LandCoverPanel() {
   // Five even placeholder bands with 2 px gaps and direct labels (viz-style-guide → Chart categories).
   const band = 19
   return (
-    <Panel title="Land cover through time" badge footer="Source: Annual NLCD Collection 1.1, 1985–2024 (pending)">
+    <Panel title="Land cover through time" badge footer="Source: Annual NLCD Collection 1.2, 1985–2025 (pending)">
       <div className="flex items-start gap-4">
         <svg viewBox="0 0 560 110" preserveAspectRatio="none" className="h-24 flex-1" role="img" aria-label="Placeholder stacked area chart">
           {LAND_COVER_ORDER.map((k, i) => {
@@ -263,7 +263,7 @@ function TimePanel() {
           <input type="range" min={YEAR_MIN} max={YEAR_MAX} value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year" aria-valuetext={String(year)} className="mt-1 w-full" />
           <div className="mt-1 flex justify-between text-xs text-ink-2">
             <span>Pre-settlement (not yet available)</span>
-            <span>1985 – 2024</span>
+            <span>{YEAR_MIN} – {YEAR_MAX}</span>
             <span>2070 – 2099 (not yet available)</span>
           </div>
         </div>
