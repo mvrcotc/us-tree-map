@@ -3,9 +3,9 @@ name: tree-map-data-contract
 description: The US Tree Map data contract. Use before writing or changing pipeline code, any Parquet, GeoJSON or JSON output, or app code that reads them, and when adding or verifying a data source. Defines every hex table, column, type, unit, H3 resolution, file path, null rule, the raster-to-hex method, and the source, version and license behind each field.
 ---
 
-# US Tree Map data contract (v0 draft)
+# US Tree Map data contract (v1)
 
-Status: drafted from planning, sources checked Oct 27, 2026. Phase 0 confirms each source's current version, access method and license (fill the Verified column), resolves the open decisions at the bottom, and Marco approves. After that this file is the law: code follows it, and every change starts here.
+Status: **approved by Marco on Oct 27, 2026** (Phase 0 gate), with decisions D1–D8 made and the Verified column filled. This file is now the law: code follows it, and every change starts here with Marco's OK. Open source checks (`bps` size and terms, `ids` access, `napis` and `tes` terms) are tracked in their rows and in CLAUDE.md → Status.
 
 ## Global rules
 

@@ -2,7 +2,7 @@
 
 A free, public-good 3D map of US tree history, climate fit and pest risk, with linked charts and a species engine that ranks what to plant in each hexagon and explains why.
 
-**Status:** planning done; Phase 0 (setup). Nothing is live yet. The pilot covers one eastern state, because the Climate Change Tree Atlas covers only the eastern US.
+**Status:** Phase 0 (setup) done Oct 27, 2026; Phase 1 (data pipeline) next. Nothing is live yet; the pilot state is Wisconsin. The pilot covers one eastern state, because the Climate Change Tree Atlas covers only the eastern US.
 
 - Plan: [docs/PLAN.md](docs/PLAN.md)
 - Start building: [docs/FIRST_PROMPT.md](docs/FIRST_PROMPT.md)

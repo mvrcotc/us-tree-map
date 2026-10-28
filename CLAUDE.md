@@ -9,7 +9,8 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 
 ## Status (update when a gate passes)
 
-- Current phase: **0 · Setup**, steps 0–8 done (Oct 27, 2026). Gate: Marco approves the mock (`docs/img/mock-v1.png`, route `/mock`) and the data contract.
+- Current phase: **1 · Data pipeline** (not started). Gate: 20 random hexes spot-checked against the source maps (`docs/PLAN.md`).
+- Phase 0 · Setup: **done Oct 27, 2026.** Marco approved the mock (`docs/img/mock-v1.png`, route `/mock`) and the data contract (v1). Evidence: `docs/qa/phase0-smoke.md`.
 - Pilot state: **Wisconsin** (chosen Oct 27, 2026; see `docs/pilot-state.md`).
 - Decisions D1–D8 are made (data contract → Decisions); v0 numbers confirmed (`docs/numbers-v0.md`).
 - Waiting on outside replies: Tree Equity Score permission (D7; draft in `docs/drafts/tes-permission-email.md`), NAPIS / Pest Tracker terms (not confirmed).

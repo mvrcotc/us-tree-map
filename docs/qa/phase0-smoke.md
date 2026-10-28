@@ -1,5 +1,7 @@
 # Phase 0 smoke screen: test evidence
 
+**Gate passed Oct 27, 2026:** Marco approved the mock (`docs/img/mock-v1.png`) and the data contract.
+
 Run Oct 27, 2026 (re-run after the reviewer fixes, all 6 e2e tests passing) on Marco's MacBook (Apple silicon), `npx playwright test` against the production build (`vite preview`), headless Chromium 156, viewport 1440 × 900 at DPR 1. Data: Wisconsin `hex_base` res 6 (4,037 hexes) with **synthetic** values. These runs check correctness only, never frame times (perf-budget → Reference setup).
 
 | Check | Rule | Result |
