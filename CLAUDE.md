@@ -9,7 +9,7 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 
 ## Status (update when a gate passes)
 
-- Current phase: **1 · Data pipeline** (step 1 of 12, source checks, done Oct 28, 2026; plan approved by Marco). Gate: 20 random hexes spot-checked against the source maps (`docs/PLAN.md`). Oct 28: Marco switched to Annual NLCD 1.2 and TCC v2025-6; years run 1985–2025 (data contract D1, D2). IDS: 2021–2025 from the EDW map service for now (D5); retry the full IDS download (FHP pages returned 502 on Oct 27–28) before each build.
+- Current phase: **1 · Data pipeline** (plan approved by Marco). Steps 1–2 done Oct 28, 2026 (source checks; raster → hex engine). Step 3 (`hex_landcover`, `land_frac`) code done and tested on synthetic data, **not run on real data**: Annual NLCD 1.2 is unreachable (MRLC downloads return 503, ScienceBase needs a USGS login). Gate: 20 random hexes spot-checked against the source maps (`docs/PLAN.md`). Oct 28: Marco switched to Annual NLCD 1.2 and TCC v2025-6; years run 1985–2025 (data contract D1, D2). IDS: 2021–2025 from the EDW map service for now (D5); retry the full IDS download (FHP pages returned 502 on Oct 27–28) before each build.
 - Phase 0 · Setup: **done Oct 27, 2026.** Marco approved the mock (`docs/img/mock-v1.png`, route `/mock`) and the data contract (v1). Evidence: `docs/qa/phase0-smoke.md`.
 - Pilot state: **Wisconsin** (chosen Oct 27, 2026; see `docs/pilot-state.md`).
 - Decisions D1–D8 are made (data contract → Decisions); v0 numbers confirmed (`docs/numbers-v0.md`).

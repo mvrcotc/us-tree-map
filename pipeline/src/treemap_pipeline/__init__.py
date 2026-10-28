@@ -6,10 +6,13 @@ import time
 from datetime import datetime, timezone
 
 from treemap_pipeline import config, io
-from treemap_pipeline.build import geo, hex_base
-from treemap_pipeline.sources import census
+from treemap_pipeline.build import geo, hex_base, landcover
+from treemap_pipeline.sources import census, nlcd
 
-STEPS = ("geo", "hex_base")
+# Fetch steps download or clip sources; the others only build, so P1 (perf-budget,
+# downloads excluded) is the sum of the build steps.
+STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover")
+FETCH_STEPS = {"fetch_nlcd"}
 
 
 def run_geo() -> list[dict]:
@@ -32,7 +35,34 @@ def run_hex_base() -> list[dict]:
     return records
 
 
-RUNNERS = {"geo": run_geo, "hex_base": run_hex_base}
+def pilot_geometry() -> dict:
+    return geo.read_state_geometry(geo.connect(), census.download_all()["state"], config.PILOT_FIPS)
+
+
+def run_fetch_nlcd() -> list[dict]:
+    clips = nlcd.fetch_all(pilot_geometry(), hex_base.members((5,))[5])
+    print(f"  nlcd: {len(clips)} clipped years in {nlcd.raw_dir() / 'clip'}")
+    return []
+
+
+def run_landcover() -> list[dict]:
+    missing = [y for y in nlcd.YEARS if not nlcd.clip_path(y).exists()]
+    if missing:
+        raise SystemExit(f"Annual NLCD clips missing for {missing[0]}–{missing[-1]}: run `uv run treemap-pipeline fetch_nlcd` first")
+    members = hex_base.members()
+    tables = landcover.build_landcover({y: nlcd.clip_path(y) for y in nlcd.YEARS}, members)
+    records = []
+    for res, table in tables.items():
+        out = config.OUT if res in config.RES_SHIPPED else config.WORK
+        written = io.write_partitioned(table, "hex_landcover", res, out, ["nlcd"])
+        if res in config.RES_SHIPPED:
+            records += written
+        print(f"  hex_landcover r{res}: {table.num_rows:,} hex-years")
+    records += hex_base.fill("land_frac", landcover.land_frac(tables, max(nlcd.YEARS)), ["nlcd"])
+    return records
+
+
+RUNNERS = {"geo": run_geo, "hex_base": run_hex_base, "fetch_nlcd": run_fetch_nlcd, "landcover": run_landcover}
 
 
 def main() -> None:
@@ -54,8 +84,11 @@ def main() -> None:
     report = {
         "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "pilot": config.PILOT_STUSPS,
+        "steps": steps,
+        "full_run": steps == list(STEPS),
         "steps_s": timings,
         "total_s": round(time.perf_counter() - started, 2),
-        "note": "perf-budget P1: downloads included on a first run",
+        "build_s": round(sum(t for s, t in timings.items() if s not in FETCH_STEPS), 2),
+        "note": "perf-budget P1 = build_s when full_run is true (fetch steps excluded); geo and hex_base include the small Census download on a first run",
     }
     (config.QA / "pipeline-timing.json").write_text(json.dumps(report, indent=1) + "\n")

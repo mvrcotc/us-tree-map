@@ -108,12 +108,13 @@ def grid_key(crs, transform, window: Window, res: int = config.RES_WORK) -> str:
     return hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest()[:16]
 
 
-def cell_grid(ds: rasterio.DatasetReader, geometry: dict, cover_cells: np.ndarray | None = None, cache_dir: Path = config.WORK / "cellgrid", res: int = config.RES_WORK) -> CellGrid:
+def cell_grid(ds: rasterio.DatasetReader, geometry: dict | None, cover_cells: np.ndarray | None = None, cache_dir: Path = config.WORK / "cellgrid", res: int = config.RES_WORK) -> CellGrid:
     """Load the cached cell grid for this source grid and window, or build it.
 
     `cover_cells`: hexes that must lie whole inside the window (the pilot's res-5 `hex_base`).
+    `geometry=None`: the raster is already a clip (e.g. `sources.nlcd.clip`), so the window is all of it.
     """
-    window = clip_window(ds, geometry, cover_cells)
+    window = Window(0, 0, ds.width, ds.height) if geometry is None else clip_window(ds, geometry, cover_cells)
     transform = ds.window_transform(window)
     key = grid_key(ds.crs, ds.transform, window, res)
     index_path = cache_dir / f"{key}.index.npy"
@@ -206,7 +207,7 @@ def categorical_counts_many(datasets: list[rasterio.DatasetReader], grid: CellGr
     k = len(classes) + 1
     ncell = len(grid.cells) + 1
     _check_key_range(ncell * k)
-    counts = [np.zeros(ncell * k, dtype=np.int64) for _ in datasets]
+    counts = [np.zeros(ncell * k, dtype=np.int32) for _ in datasets]  # per-cell counts are small; keeps 8 years ≈ 250 MB
     n_total = np.zeros(ncell, dtype=np.int64)
     index = grid.index()
     for r0, r1, win in _strips(grid):
@@ -214,7 +215,7 @@ def categorical_counts_many(datasets: list[rasterio.DatasetReader], grid: CellGr
         n_total += np.bincount(idx.ravel(), minlength=ncell)
         base = idx * k
         for ds, lookup, acc in zip(datasets, lookups, counts):
-            acc += np.bincount((base + lookup[ds.read(band, window=win)]).ravel(), minlength=ncell * k)
+            acc += np.bincount((base + lookup[ds.read(band, window=win)]).ravel(), minlength=ncell * k).astype(np.int32)
     has = n_total[1:] > 0
     totals = pa.table({"h3": pa.array(grid.cells[has], pa.uint64()), "n_total": pa.array(n_total[1:][has], pa.int64())})
     tables = []

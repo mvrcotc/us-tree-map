@@ -4,15 +4,19 @@ Membership: the resolution-8 cells whose centers fall inside the state polygon.
 Coarser resolutions are the parents of those cells, so every hex at res r is
 exactly the set of parents of the hexes at res r + 1 (roll-up consistency).
 
-Filled now: `h3`, `res`, `p3`, and `area_km2` (from H3 itself). The other columns
-stay NULL until their sources land.
+Filled here: `h3`, `res`, `p3`, and `area_km2` (from H3 itself). Later steps fill
+other columns with `fill` (`land_frac` from `build.landcover`); the rest stay NULL
+until their sources land.
 """
+
+import json
 
 import h3.api.basic_int as h3
 import numpy as np
 import pyarrow as pa
+import pyarrow.parquet as pq
 
-from treemap_pipeline import config, h3util
+from treemap_pipeline import config, h3util, io
 
 SCHEMA = pa.schema(
     [
@@ -68,3 +72,55 @@ def build_hex_base(geometry: dict, finest: int = config.RES_WORK, coarsest: int 
             cells = parents(cells, res)
         tables[res] = table_for(cells, res)
     return tables
+
+
+def base_dir(res: int, out_dir=config.OUT, work_dir=config.WORK):
+    """Where the built hex_base lives: shipped resolutions in `data/out`, res 8 in `data/work`."""
+    return (out_dir if res in config.RES_SHIPPED else work_dir) / "hex" / "hex_base" / f"r{res}"
+
+
+def read(res: int, **dirs) -> pa.Table:
+    path = base_dir(res, **dirs)
+    if not path.exists():
+        raise FileNotFoundError(f"hex_base r{res} not built yet: run `uv run treemap-pipeline hex_base`")
+    return pq.read_table(path, schema=SCHEMA).sort_by("h3")
+
+
+def members(resolutions=(config.RES_WORK, *config.RES_SHIPPED), **dirs) -> dict[int, np.ndarray]:
+    """{res: hex_base cells} for `raster.rollup`."""
+    return {res: read(res, **dirs)["h3"].to_numpy() for res in resolutions}
+
+
+def fill(column: str, values: dict[int, pa.Table], sources: list[str], **dirs) -> list[dict]:
+    """Set one hex_base column from {res: table(h3, value)}; hexes without a value get NULL.
+
+    Rewrites the partitions in place and returns manifest records for the shipped ones.
+    """
+    records = []
+    for res, vals in values.items():
+        base = read(res, **dirs)
+        ids = base["h3"].to_numpy()
+        pos = np.searchsorted(ids, vals["h3"].to_numpy())
+        if len(vals) and (pos.max() >= len(ids) or not np.array_equal(ids[pos], vals["h3"].to_numpy())):
+            raise ValueError(f"{column} r{res}: values for hexes outside hex_base")
+        field = SCHEMA.field(column)
+        mask = np.ones(len(ids), dtype=bool)
+        mask[pos] = vals["value"].is_null().to_numpy(zero_copy_only=False)
+        data = np.zeros(len(ids), dtype=field.type.to_pandas_dtype())
+        data[pos] = vals["value"].fill_null(0).to_numpy(zero_copy_only=False)  # masked out below where NULL
+        col = pa.array(data, field.type, mask=mask)
+        table = base.set_column(SCHEMA.get_field_index(column), field, col)
+        out = base_dir(res, **dirs).parents[2]
+        written = io.write_partitioned(table, "hex_base", res, out, sorted({"census", *sources, *_sources_of(res, out)}))
+        if res in config.RES_SHIPPED:
+            records += written
+    return records
+
+
+def _sources_of(res: int, out_dir) -> list[str]:
+    """Sources already recorded for this hex_base resolution in the manifest (kept on rewrite)."""
+    manifest = out_dir / "manifest.json"
+    if not manifest.exists():
+        return []
+    files = json.loads(manifest.read_text())["files"]
+    return sorted({s for path, f in files.items() if path.startswith(f"hex/hex_base/r{res}/") for s in f["sources"]})
