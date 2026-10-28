@@ -84,9 +84,14 @@ def test_partitioned_write_and_manifest(tables, tmp_path):
 BUILT = config.OUT / "hex" / "hex_base"
 
 
+# Shipped Wisconsin counts from the 2025 Census boundary (docs/pilot-state.md).
+PILOT_COUNTS = {5: 625, 6: 4037, 7: 27304}
+
+
 @pytest.mark.skipif(not BUILT.exists(), reason="pilot hex_base not built yet")
 def test_built_pilot_rollup():
-    """Roll-up consistency on the real pilot output (res 7 -> 6 -> 5)."""
+    """Roll-up consistency and hex counts on the real pilot output (res 7 -> 6 -> 5)."""
     sets = {res: set(pq.read_table(BUILT / f"r{res}")["h3"].to_pylist()) for res in config.RES_SHIPPED}
+    assert {res: len(s) for res, s in sets.items()} == PILOT_COUNTS
     for res in (5, 6):
         assert sets[res] == {h3.cell_to_parent(c, res) for c in sets[res + 1]}

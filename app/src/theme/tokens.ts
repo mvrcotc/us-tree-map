@@ -17,7 +17,10 @@ export const chrome = {
   focusRing: '#4a6f94',
 } as const
 
-/** Text inks on light surfaces (viz-style-guide → Chart rules). */
+/**
+ * Text inks on light surfaces (viz-style-guide → Chart rules). Muted ink is ~3.5:1, so it is for
+ * non-text marks and text ≥ 18 px only; smaller text uses secondary ink (WCAG AA 4.5:1).
+ */
 export const ink = {
   primary: '#0b0b0b',
   secondary: '#52514e',

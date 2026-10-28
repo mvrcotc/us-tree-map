@@ -59,7 +59,7 @@ describe('chrome contrast', () => {
   it('focus ring and accent ≥ 3:1 on page and surface', () => {
     for (const bg of [chrome.page, chrome.surface, chrome.surfaceMuted]) expect(contrast(chrome.focusRing, bg)).toBeGreaterThanOrEqual(3)
   })
-  it('primary and secondary ink ≥ 4.5:1 on every surface; muted ink ≥ 3:1', () => {
+  it('primary and secondary ink ≥ 4.5:1 on every surface (small text); muted ink ≥ 3:1 (marks, large text only)', () => {
     for (const bg of [chrome.page, chrome.surface, chrome.surfaceMuted]) {
       expect(contrast(ink.primary, bg)).toBeGreaterThanOrEqual(4.5)
       expect(contrast(ink.secondary, bg)).toBeGreaterThanOrEqual(4.5)

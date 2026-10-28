@@ -1,6 +1,6 @@
 # Phase 0 smoke screen: test evidence
 
-Run Oct 27, 2026 on Marco's MacBook (Apple silicon), `npx playwright test` against the production build (`vite preview`), headless Chromium 156, viewport 1440 × 900 at DPR 1. Data: Wisconsin `hex_base` res 6 (4,037 hexes) with **synthetic** values. These runs check correctness only, never frame times (perf-budget → Reference setup).
+Run Oct 27, 2026 (re-run after the reviewer fixes, all 6 e2e tests passing) on Marco's MacBook (Apple silicon), `npx playwright test` against the production build (`vite preview`), headless Chromium 156, viewport 1440 × 900 at DPR 1. Data: Wisconsin `hex_base` res 6 (4,037 hexes) with **synthetic** values. These runs check correctness only, never frame times (perf-budget → Reference setup).
 
 | Check | Rule | Result |
 | --- | --- | --- |
@@ -16,9 +16,10 @@ Run Oct 27, 2026 on Marco's MacBook (Apple silicon), `npx playwright test` again
 
 | File | kind | kB |
 | --- | --- | --- |
-| `index-*.js` (React, three.js, R3F, postprocessing, MapLibre main, app) | critical | 683.3 |
+| `index-*.js` (React, three.js, R3F, postprocessing, MapLibre main, app) | critical | 684.6 |
 | `maplibre-gl-worker-*.mjs` | critical | 148.0 |
 | `data.worker-*.js` (hyparquet, fzstd, h3-js) | critical | 82.8 |
 | `YearPanel-*.js` (ECharts, loaded after the first hex frame) | lazy | 172.0 |
-| **L1 critical path** | budget 1,100 | **914.1: pass** |
-| **L2 all JS without user action** | budget 1,300 | **1,086.1: pass** |
+| `MockPage-*.js` (`/mock` only) | lazy | 3.3 |
+| **L1 critical path** | budget 1,100 | **915.4: pass** |
+| **L2 all JS without user action** | budget 1,300 | **1,090.8: pass** |

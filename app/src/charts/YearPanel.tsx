@@ -79,7 +79,7 @@ export default function YearPanel({ data }: { data: HexData }) {
       ) : (
         <div ref={el} className="h-40" role="img" aria-label={`Line chart of the synthetic state mean score, 1985 to 2024; ${year} marked`} />
       )}
-      <footer className="mt-2 text-xs text-ink-3">Source: synthetic data (Phase 0 smoke test)</footer>
+      <footer className="mt-2 text-xs text-ink-2">Source: synthetic data (Phase 0 smoke test)</footer>
     </section>
   )
 }

@@ -14,6 +14,7 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 - Decisions D1–D8 are made (data contract → Decisions); v0 numbers confirmed (`docs/numbers-v0.md`).
 - Waiting on outside replies: Tree Equity Score permission (D7; draft in `docs/drafts/tes-permission-email.md`), NAPIS / Pest Tracker terms (not confirmed).
 - Repo: https://github.com/mvrcotc/us-tree-map (public, MIT).
+- Carried into later phases (reviewer, Oct 27, 2026): keyboard selection of hexes with a text readout (hard rule 5; Phase 2 gate), the selected hex's primary-ink outline (viz-style-guide → Selection; Phase 2), and the About panel with `catalog/sources.json` (hard rule 7; before any real data ships). Retry the `ids` and `bps` source checks before the Phase 1 downloads (both servers were down).
 
 ## Hard rules
 

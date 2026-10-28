@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { PILOT_NAME } from './config'
 import { Stage } from './stage/Stage'
 import { useStore } from './store'
+import { LoadError } from './ui/LoadError'
 import { Overlay } from './ui/Overlay'
 import { useReducedMotion } from './ui/useReducedMotion'
 import { YearSlider } from './ui/YearSlider'
@@ -30,6 +31,7 @@ export default function App() {
     <main className="relative h-full w-full overflow-hidden bg-page">
       <Stage />
       <Overlay />
+      <LoadError />
       <header className="pointer-events-none absolute left-4 top-4 flex flex-col gap-2">
         <h1 className="font-serif text-2xl text-ink-1">US Tree Map · {PILOT_NAME}</h1>
         <p className="w-fit rounded-full bg-surface/90 px-3 py-1 text-xs font-medium text-ink-2 shadow-soft" data-testid="synthetic-label">

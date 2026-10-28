@@ -4,7 +4,7 @@
  * custom layer (CLAUDE.md → Gotchas → Map + 3D layer sync).
  */
 import { Canvas } from '@react-three/fiber'
-import { Map as MLMap, setWorkerUrl, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
+import { Map as MLMap, setWorkerUrl, type GeoJSONSourceSpecification, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
@@ -24,6 +24,19 @@ const FLY_PITCH = 50
 const FLY_ZOOM = 9.5
 
 type FeatureCollection = { features: { geometry: { coordinates: unknown } }[] }
+
+function reportError(message: string, err: unknown) {
+  console.error(err)
+  useStore.getState().setLoadError(message)
+}
+
+async function fetchJson(url: string): Promise<GeoJSONData> {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`)
+  return r.json()
+}
+
+type GeoJSONData = GeoJSONSourceSpecification['data']
 
 function bboxOf(fc: FeatureCollection): LngLatBoundsLike {
   let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity]
@@ -51,17 +64,19 @@ function createMap(container: HTMLElement, style: StyleSpecification): MLMap {
   bridge.map = map
 
   map.on('load', async () => {
-    const [state, counties] = await Promise.all([
-      fetch(dataUrl('geo/state.json')).then((r) => r.json()),
-      fetch(dataUrl('geo/counties.json')).then((r) => r.json()),
-    ])
-    map.addSource('counties', { type: 'geojson', data: counties })
-    map.addSource('state', { type: 'geojson', data: state })
-    map.addLayer({ id: 'county-lines', type: 'line', source: 'counties', paint: { 'line-color': '#9aa7b4', 'line-width': 0.5, 'line-opacity': 0.6 } })
-    map.addLayer({ id: 'state-outline', type: 'line', source: 'state', paint: { 'line-color': '#4f5d6b', 'line-width': 1.2 } })
+    // The 3D layer goes in first, so the columns draw even if the outlines fail to load.
     map.addLayer(createSyncLayer())
-    const reduced = useStore.getState().reducedMotion
-    map.fitBounds(bboxOf(state), { padding: 60, pitch: 45, bearing: -8, duration: reduced ? 0 : 1200 })
+    try {
+      const [state, counties] = await Promise.all([fetchJson(dataUrl('geo/state.json')), fetchJson(dataUrl('geo/counties.json'))])
+      map.addSource('counties', { type: 'geojson', data: counties })
+      map.addSource('state', { type: 'geojson', data: state })
+      map.addLayer({ id: 'county-lines', type: 'line', source: 'counties', paint: { 'line-color': '#9aa7b4', 'line-width': 0.5, 'line-opacity': 0.6 } }, 'three-sync')
+      map.addLayer({ id: 'state-outline', type: 'line', source: 'state', paint: { 'line-color': '#4f5d6b', 'line-width': 1.2 } }, 'three-sync')
+      const reduced = useStore.getState().reducedMotion
+      map.fitBounds(bboxOf(state as unknown as FeatureCollection), { padding: 60, pitch: 45, bearing: -8, duration: reduced ? 0 : 1200 })
+    } catch (err) {
+      reportError('The state outline could not be loaded.', err)
+    }
   })
 
   map.on('click', (e) => {
@@ -85,7 +100,7 @@ export function Stage() {
   const hexData = useStore((s) => s.hexData)
 
   useEffect(() => {
-    if (!useStore.getState().hexData) loadHexes(6).then(useStore.getState().setHexData).catch((err) => console.error(err))
+    if (!useStore.getState().hexData) loadHexes(6).then(useStore.getState().setHexData).catch((err) => reportError('The hex data could not be loaded.', err))
   }, [])
 
   useEffect(() => {
@@ -97,7 +112,7 @@ export function Stage() {
       .then((style: StyleSpecification) => {
         if (!cancelled) map = createMap(mapContainer.current!, mutedPositron(style))
       })
-      .catch((err) => console.error(err))
+      .catch((err) => reportError('The street map could not be loaded.', err))
     return () => {
       cancelled = true
       if (map && bridge.map === map) bridge.map = null

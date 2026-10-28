@@ -24,6 +24,8 @@ def connect() -> duckdb.DuckDBPyConnection:
 
 
 def _vsizip(zip_path: Path, layer_name: str) -> str:
+    # GDAL's virtual-file syntax needs one string; the only place a path is built by formatting.
+    # Spaces in the path are fine here (checked with the repo's own path).
     return f"/vsizip/{zip_path}/{layer_name}.shp"
 
 

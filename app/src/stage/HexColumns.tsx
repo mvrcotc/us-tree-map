@@ -183,6 +183,17 @@ class Columns implements ColumnsHandle {
     return new THREE.Vector3(this.data.x[i], this.heightAt(i), this.data.z[i])
   }
 
+  /** Free GPU buffers and programs (a resolution switch re-creates the columns). */
+  dispose() {
+    this.mesh.geometry.dispose()
+    ;(this.mesh.material as THREE.Material).dispose()
+    this.mesh.customDepthMaterial?.dispose()
+    this.mesh.dispose()
+    this.pickMesh.geometry.dispose()
+    ;(this.pickMesh.material as THREE.Material).dispose()
+    this.pickMesh.dispose()
+  }
+
   lngLat(i: number): [number, number] {
     return [this.data.lng[i], this.data.lat[i]]
   }
@@ -208,6 +219,7 @@ export function HexColumns({ data, uniforms }: { data: HexData; uniforms: HexUni
     return () => {
       unsubscribe()
       if (bridge.columns === columns) bridge.columns = null
+      columns.dispose()
     }
   }, [columns])
 

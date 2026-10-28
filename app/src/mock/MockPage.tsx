@@ -9,6 +9,7 @@ import { Stage } from '../stage/Stage'
 import { useStore } from '../store'
 import { GREENS_6 } from '../theme/ramps'
 import { LAND_COVER_ORDER, landCover, noData, scoreComponents } from '../theme/tokens'
+import { LoadError } from '../ui/LoadError'
 import { Overlay } from '../ui/Overlay'
 
 function Panel({ title, children, footer, className = '', badge = false }: { title: string; children: ReactNode; footer?: string; className?: string; badge?: boolean }) {
@@ -19,14 +20,14 @@ function Panel({ title, children, footer, className = '', badge = false }: { tit
         {badge && <Placeholder />}
       </div>
       <div className="mt-2.5 flex-1">{children}</div>
-      {footer && <footer className="mt-2.5 border-t border-hairline pt-2 text-xs text-ink-3">{footer}</footer>}
+      {footer && <footer className="mt-2.5 border-t border-hairline pt-2 text-xs text-ink-2">{footer}</footer>}
     </section>
   )
 }
 
 function Placeholder({ children = 'Placeholder' }: { children?: ReactNode }) {
   return (
-    <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-3">{children}</span>
+    <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-2">{children}</span>
   )
 }
 
@@ -54,14 +55,14 @@ function TopBar() {
     <header className="flex items-center gap-4 rounded-panel bg-surface px-5 py-3 shadow-soft">
       <div className="mr-auto flex items-baseline gap-3">
         <h1 className="font-serif text-2xl text-ink-1">US Tree Map</h1>
-        <span className="text-sm text-ink-3">Wisconsin pilot</span>
+        <span className="text-sm text-ink-2">Wisconsin pilot</span>
       </div>
       <label className="flex w-72 items-center gap-2 rounded-full border border-hairline bg-page px-4 py-2 text-sm text-ink-2">
         <span aria-hidden>⌕</span>
-        <input type="search" placeholder="Search a place or ZIP" className="w-full bg-transparent outline-none placeholder:text-ink-3" />
+        <input type="search" placeholder="Search a place or ZIP" className="w-full bg-transparent outline-none placeholder:text-ink-2" />
       </label>
       <button type="button" className="rounded-full border border-hairline px-4 py-2 text-sm text-ink-1 hover:bg-surface-muted">
-        Metric · <span className="font-medium">Best-species score</span> <span aria-hidden className="text-ink-3">▾</span>
+        Metric · <span className="font-medium">Best-species score</span> <span aria-hidden className="text-ink-2">▾</span>
       </button>
       <Segmented
         label="Emissions scenario"
@@ -105,7 +106,7 @@ function LeftColumn() {
               {t}
             </button>
           ))}
-          <button type="button" disabled title="Waiting on Tree Equity Score permission (decision D7)" className="cursor-not-allowed rounded-full border border-dashed border-hairline px-3 py-1 text-sm text-ink-3">
+          <button type="button" disabled title="Waiting on Tree Equity Score permission (decision D7)" className="cursor-not-allowed rounded-full border border-dashed border-hairline px-3 py-1 text-sm text-ink-2">
             Need
           </button>
         </div>
@@ -115,7 +116,7 @@ function LeftColumn() {
           {WEIGHTS.map((w) => {
             const disabled = w.key === 'need'
             return (
-              <label key={w.key} className={`flex flex-col gap-1 text-sm ${disabled ? 'text-ink-3' : 'text-ink-2'}`}>
+              <label key={w.key} className={`flex flex-col gap-1 text-sm ${disabled ? 'text-ink-2' : 'text-ink-2'}`}>
                 <span className="flex justify-between">
                   <span className="inline-flex items-center gap-2">
                     <span aria-hidden className="size-2.5 rounded-full" style={{ background: scoreComponents[w.key] }} />
@@ -146,17 +147,17 @@ function Legend() {
   return (
     <div className="pointer-events-auto absolute bottom-4 left-4 rounded-control bg-surface/95 p-3 shadow-soft">
       <p className="text-xs font-medium text-ink-1">Best-species score</p>
-      <p className="text-[11px] text-ink-3">Height + color · synthetic data</p>
+      <p className="text-[11px] text-ink-2">Height + color · synthetic data</p>
       <div className="mt-2 flex items-end gap-1">
         {GREENS_6.map((c, i) => (
           <div key={c} className="flex flex-col items-center gap-1">
             <span className="block h-3 w-7 rounded-sm" style={{ background: c }} />
-            <span className="text-[10px] tabular-nums text-ink-3">{Math.round((i * 100) / 6)}</span>
+            <span className="text-[10px] tabular-nums text-ink-2">{Math.round((i * 100) / 6)}</span>
           </div>
         ))}
         <div className="ml-2 flex flex-col items-center gap-1">
           <span className="block h-3 w-7 rounded-sm border" style={{ background: noData.fill, borderColor: noData.outline }} />
-          <span className="text-[10px] text-ink-3">No data</span>
+          <span className="text-[10px] text-ink-2">No data</span>
         </div>
       </div>
     </div>
@@ -170,7 +171,7 @@ function RightColumn() {
   return (
     <div className="flex min-h-0 flex-col gap-4">
       <Panel title="Best species here" badge footer="Source: species engine (Phase 3)">
-        <p className="mb-2 text-xs text-ink-3">Click a hex to rank species</p>
+        <p className="mb-2 text-xs text-ink-2">Click a hex to rank species</p>
         <ul className="flex flex-col gap-2" aria-label="Placeholder species bars">
           {BAR_WIDTHS.map((w, i) => (
             <li key={i}>
@@ -257,13 +258,13 @@ function TimePanel() {
         <div className="flex-1">
           <div className="flex items-baseline justify-between">
             <span className="font-serif text-3xl tabular-nums text-ink-1">{year}</span>
-            <span className="text-xs text-ink-3">synthetic</span>
+            <span className="text-xs text-ink-2">synthetic</span>
           </div>
-          <input type="range" min={YEAR_MIN} max={YEAR_MAX} value={year} onChange={(e) => setYear(Number(e.target.value))} aria-valuetext={String(year)} className="mt-1 w-full" />
-          <div className="mt-1 flex justify-between text-xs text-ink-3">
-            <span>Pre-settlement</span>
+          <input type="range" min={YEAR_MIN} max={YEAR_MAX} value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year" aria-valuetext={String(year)} className="mt-1 w-full" />
+          <div className="mt-1 flex justify-between text-xs text-ink-2">
+            <span>Pre-settlement (not yet available)</span>
             <span>1985 – 2024</span>
-            <span>2070 – 2099</span>
+            <span>2070 – 2099 (not yet available)</span>
           </div>
         </div>
       </div>
@@ -281,6 +282,7 @@ export default function MockPage() {
       <section className="relative min-h-0 overflow-hidden rounded-panel shadow-soft" aria-label="3D map">
         <Stage />
         <Overlay />
+        <LoadError />
         <p className="pointer-events-none absolute left-4 top-4 rounded-full bg-surface/90 px-3 py-1 text-xs font-medium text-ink-2 shadow-soft" data-testid="synthetic-label">
           Synthetic data · Phase 0 mock
         </p>

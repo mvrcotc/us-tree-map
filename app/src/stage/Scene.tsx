@@ -23,6 +23,7 @@ function Effects({ uniforms }: { uniforms: HexUniforms }) {
     // `renderPass` is public on NormalPass but missing from its typings.
     if (pass) (pass as unknown as { renderPass: { overrideMaterial: THREE.Material } }).renderPass.overrideMaterial = normalMaterial
   })
+  useEffect(() => () => normalMaterial.dispose(), [normalMaterial])
 
   return (
     <EffectComposer ref={composer} enableNormalPass multisampling={0}>

@@ -14,7 +14,7 @@ __pycache__/
 .ruff_cache/
 
 # Data: local only; published copies go to R2
-data/
+/data/
 
 # Secrets and personal settings
 .env

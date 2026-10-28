@@ -56,4 +56,4 @@ Status: **confirmed by Marco, Oct 27, 2026, as written.**
 | Q2 | Alignment test tolerance | ≤ 1 px vs. `map.project` |
 | Q3 | True-data-color tolerance (`viz-style-guide`) | OKLab ΔE × 100 ≤ 3 |
 
-For scale: Wisconsin has 3,845 hexes at res 6 and 26,903 at res 7 (`docs/pilot-state.md`), so the whole state at res 7 still fits M1.
+For scale: the shipped Wisconsin grid has 4,037 hexes at res 6 and 27,304 at res 7 (`docs/pilot-state.md`), so the whole state at res 7 still fits M1.
