@@ -50,7 +50,11 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 - **Harmless warning:** with three 0.186, React Three Fiber 9.8 logs "THREE.Clock: This module has been deprecated" from its own code. Ignore it.
 - **No React state in the frame loop.** Per-frame changes go through refs, shader uniforms and `useFrame`, never `setState` (`perf-budget` → Rendering rules).
 - **TypeScript 7** (create-vite's default) works with the template's oxlint and type-checks this stack. Don't add typescript-eslint: its current release requires TypeScript below 6.1.
-- **DuckDB 2.0** is current on PyPI. If `INSTALL h3 FROM community` fails on it, pin the newest 1.5.x release that has the `h3` extension and note it here.
+- **MapLibre's CSS sets `.maplibregl-map { position: relative }`**, which beats Tailwind's layered `absolute`: give the map container a sized wrapper (`h-full w-full` inside an `absolute inset-0` div) or it collapses to 0 px.
+- **postprocessing's `NormalPass` swaps every mesh's material for a `MeshNormalMaterial`**, which ignores the column morph, so SSAO would see flat columns. `app/src/stage/Scene.tsx` sets `normalPass.renderPass.overrideMaterial` to the morph-aware normal material (`renderPass` is public but missing from the typings). The shadow pass gets the same morph through `mesh.customDepthMaterial`.
+- **hyparquet's core reads only Snappy.** The data contract writes ZSTD, so pass `compressors: { ZSTD }` backed by `fzstd` (4.1 kB) to every `parquetRead*` call.
+- **DuckDB 2.0 relations have no `fetchone()`**: use `con.execute(sql, params).fetchone()`, or `rel.limit(1).fetchall()`.
+- **DuckDB 2.0** is current on PyPI. `INSTALL h3 FROM community` and `INSTALL spatial` both work on DuckDB 2.0.0 (checked Oct 27, 2026).
 
 ## Layout
 

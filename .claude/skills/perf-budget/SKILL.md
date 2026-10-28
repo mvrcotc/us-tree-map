@@ -52,6 +52,7 @@ Probe builds: Vite 8.3.5, production mode, each emitted JS file compressed with 
 | zustand (5.0.16) | `create` | 1.4 kB |
 | echarts (6.1.0) | core; bar, line, scatter, heatmap, custom; grid, tooltip, legend, brush, dataset; canvas renderer | 199.5 kB |
 | hyparquet (1.31.5) | `parquetReadObjects` | 17.1 kB |
+| fzstd (0.1.1), added Oct 27, 2026 | `decompress` (ZSTD for hyparquet; the data contract writes ZSTD) | 4.1 kB |
 | @duckdb/duckdb-wasm (1.33.1-dev57.0), EH build | JS + worker + wasm | ≈ 8.3 MB before any extension |
 | Fallback, not used: deck.gl (9.4.0) core + layers + geo-layers + maplibre, incl. h3-js | `MapLibreOverlay`, `H3HexagonLayer` | 308.8 kB |
 

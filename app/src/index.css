@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+/* Placeholder tokens for the smoke screen; step 8 replaces them with app/src/theme/ tokens. */
+@theme {
+  --color-page: #f6f7f8;
+  --color-surface: #ffffff;
+  --color-ink-1: #0b0b0b;
+  --color-ink-2: #52514e;
+  --color-ink-3: #898781;
+  --color-accent: #4a6f94;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --shadow-soft: 0 1px 2px rgb(20 30 45 / 0.06), 0 8px 24px rgb(20 30 45 / 0.08);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-page);
+}
