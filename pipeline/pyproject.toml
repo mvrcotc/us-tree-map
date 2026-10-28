@@ -1,0 +1,32 @@
+[project]
+name = "treemap-pipeline"
+version = "0.1.0"
+description = "US Tree Map data pipeline: public rasters and tables to H3 hex Parquet, GeoJSON and JSON"
+readme = "README.md"
+authors = [
+    { name = "mvrcotc", email = "mvrco.tc@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=2.0.0",
+    "h3>=4.5.0",
+    "numpy>=2.5.4",
+    "pyarrow>=26.0.0",
+    "pyproj>=3.8.0",
+    "rasterio>=1.5.2",
+]
+
+[project.scripts]
+treemap-pipeline = "treemap_pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

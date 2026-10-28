@@ -40,3 +40,7 @@ Coverage: all three are fully inside Tree Atlas coverage (eastern US). All fit p
 9. [Wisconsin Council on Forestry 2021–2022 biennial report](https://docs.legis.wisconsin.gov/misc/mandatedreports/2023/department_of_natural_resources/2021_2022_council_on_forestry_biennial_report_s_26_02_2_b_received_6_1_2023.pdf)
 
 Literature figures are context only. The app's values come from the pipeline (hard rule 1).
+
+## Shipped hex counts (pipeline, Oct 27, 2026)
+
+`hex_base` takes the res-8 cells whose centers fall inside the 2025 Census boundary and builds coarser resolutions as their parents, so edge hexes are whole: res 5 = 625, res 6 = 4,037, res 7 = 27,304, res 8 = 188,282.

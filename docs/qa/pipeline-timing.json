@@ -1,0 +1,10 @@
+{
+ "run_at": "2026-10-28T03:15:27+00:00",
+ "pilot": "WI",
+ "steps_s": {
+  "geo": 2.11,
+  "hex_base": 6.49
+ },
+ "total_s": 8.6,
+ "note": "perf-budget P1: downloads included on a first run"
+}
