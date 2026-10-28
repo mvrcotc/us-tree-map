@@ -1,4 +1,4 @@
-"""sources.nlcd: zip handling, range reads and clips on synthetic files (no network)."""
+"""sources.zipclip (via nlcd and tcc): zip handling, range reads and clips on synthetic files (no network)."""
 
 import io
 import json
@@ -11,8 +11,11 @@ import rasterio
 from pyproj import Transformer
 from rasterio.transform import from_origin
 
+from treemap_pipeline import config
 from treemap_pipeline.build import hex_base
-from treemap_pipeline.sources import nlcd
+from treemap_pipeline.sources import nlcd, tcc, zipclip
+
+SRC = nlcd.SOURCE
 
 LNG, LAT = -89.40, 43.07
 GEOMETRY = {"type": "Polygon", "coordinates": [[[LNG - 0.02, LAT - 0.015], [LNG + 0.02, LAT - 0.015], [LNG + 0.02, LAT + 0.015], [LNG - 0.02, LAT + 0.015], [LNG - 0.02, LAT - 0.015]]]}
@@ -34,7 +37,7 @@ def make_zip(path, compression, year=2025):
 
 @pytest.fixture
 def raw(tmp_path, monkeypatch):
-    monkeypatch.setattr(nlcd, "raw_dir", lambda: tmp_path / "nlcd")
+    monkeypatch.setattr(config, "RAW", tmp_path)
     (tmp_path / "nlcd").mkdir()
     return tmp_path / "nlcd"
 
@@ -45,10 +48,10 @@ def cover():
 
 
 def test_clip_from_local_zip_is_on_the_source_grid(raw, cover):
-    data = make_zip(raw / nlcd.zip_name(2025), zipfile.ZIP_STORED)
-    path = nlcd.clip(2025, GEOMETRY, cover)
+    data = make_zip(raw / SRC.zip_name(2025), zipfile.ZIP_STORED)
+    path = SRC.clip(2025, GEOMETRY, cover)
     record = json.loads(path.with_suffix(".window.json").read_text())
-    with rasterio.open(f"/vsizip/{raw / nlcd.zip_name(2025)}/Annual_NLCD_LndCov_2025_CU_C1V2.tif") as src, rasterio.open(path) as clip:
+    with rasterio.open(f"/vsizip/{raw / SRC.zip_name(2025)}/Annual_NLCD_LndCov_2025_CU_C1V2.tif") as src, rasterio.open(path) as clip:
         col, row = ~src.transform @ (clip.transform.c, clip.transform.f)
         assert col == int(col) and row == int(row), "whole-pixel offset: same pixel alignment"
         assert clip.crs == src.crs and clip.res == src.res
@@ -57,14 +60,14 @@ def test_clip_from_local_zip_is_on_the_source_grid(raw, cover):
 
 
 def test_clip_is_reused_only_when_the_window_matches(raw, cover):
-    make_zip(raw / nlcd.zip_name(2025), zipfile.ZIP_STORED)
-    path = nlcd.clip(2025, GEOMETRY, cover)
+    make_zip(raw / SRC.zip_name(2025), zipfile.ZIP_STORED)
+    path = SRC.clip(2025, GEOMETRY, cover)
     mtime = os.path.getmtime(path)
     before = json.loads(path.with_suffix(".window.json").read_text())
-    assert os.path.getmtime(nlcd.clip(2025, GEOMETRY, cover)) == mtime
+    assert os.path.getmtime(SRC.clip(2025, GEOMETRY, cover)) == mtime
     moved = dict(GEOMETRY, coordinates=[[[x + 0.05, y] for x, y in GEOMETRY["coordinates"][0]]])
     moved_cover = hex_base.build_hex_base(moved)[5]["h3"].to_numpy()
-    nlcd.clip(2025, moved, moved_cover)
+    SRC.clip(2025, moved, moved_cover)
     assert json.loads(path.with_suffix(".window.json").read_text()) != before
     assert os.path.getmtime(path) != mtime
 
@@ -94,20 +97,34 @@ def serve(blob: bytes, honor_range: bool):
 
 def test_remote_zip_must_honor_ranges(raw, tmp_path, monkeypatch):
     make_zip(tmp_path / "remote.zip", zipfile.ZIP_STORED)
-    monkeypatch.setattr(nlcd, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=False))
+    monkeypatch.setattr(zipclip, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=False))
     with pytest.raises(OSError, match="ignores range requests"):
-        nlcd.source_path(2025)
+        SRC.source_path(2025)
 
 
 def test_remote_stored_zip_gives_a_vsicurl_path(raw, tmp_path, monkeypatch):
     make_zip(tmp_path / "remote.zip", zipfile.ZIP_STORED)
-    monkeypatch.setattr(nlcd, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=True))
-    path = nlcd.source_path(2025)
-    assert path == f"/vsizip//vsicurl/{nlcd.BASE_URL}/{nlcd.zip_name(2025)}/Annual_NLCD_LndCov_2025_CU_C1V2.tif"
+    monkeypatch.setattr(zipclip, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=True))
+    path = SRC.source_path(2025)
+    assert path == f"/vsizip//vsicurl/{SRC.base_url}/{SRC.zip_name(2025)}/Annual_NLCD_LndCov_2025_CU_C1V2.tif"
 
 
 def test_remote_deflated_zip_is_refused(raw, tmp_path, monkeypatch):
     make_zip(tmp_path / "remote.zip", zipfile.ZIP_DEFLATED)
-    monkeypatch.setattr(nlcd, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=True))
+    monkeypatch.setattr(zipclip, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=True))
     with pytest.raises(ValueError, match="compresses its GeoTIFF"):
-        nlcd.source_path(2025)
+        SRC.source_path(2025)
+
+
+def test_tcc_names_match_the_gateway():
+    """URL and clip names as listed on the USFS raster gateway (checked Oct 28, 2026)."""
+    assert f"{tcc.SOURCE.base_url}/{tcc.SOURCE.zip_name(2025)}" == "https://data.fs.usda.gov/geodata/rastergateway/treecanopycover/docs/v2025-6/nlcd_tcc_conus_2025_v2025-6_wgs84.zip"
+    assert tcc.SOURCE.clip_path(1985).parent == config.RAW / "tcc" / "clip"
+    assert list(tcc.YEARS) == list(range(1985, 2026))
+
+
+def test_fetch_all_with_workers(raw, cover):
+    for year in (2024, 2025):
+        make_zip(raw / SRC.zip_name(year), zipfile.ZIP_STORED, year)
+    clips = SRC.fetch_all(GEOMETRY, cover, years=[2024, 2025], workers=2)
+    assert sorted(clips) == [2024, 2025] and all(p.exists() for p in clips.values())

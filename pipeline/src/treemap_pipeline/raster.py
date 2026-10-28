@@ -312,5 +312,12 @@ def rollup(table: pa.Table, members: dict[int, np.ndarray], group_cols: list[str
     return out
 
 
+def require_coverage(rolled: dict[int, pa.Table], members: dict[int, np.ndarray]) -> None:
+    """Fail if any `hex_base` hex got no pixels (it would vanish from the table silently)."""
+    for res, cells in members.items():
+        if len(rolled[res]) != len(cells):
+            raise ValueError(f"r{res}: {len(cells) - len(rolled[res])} hex_base hexes have no pixels in the clip")
+
+
 def _sum_type(table: pa.Table, col: str) -> str:
     return "DOUBLE" if pa.types.is_floating(table.schema.field(col).type) else "BIGINT"

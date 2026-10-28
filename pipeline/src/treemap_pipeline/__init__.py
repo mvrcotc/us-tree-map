@@ -6,13 +6,15 @@ import time
 from datetime import datetime, timezone
 
 from treemap_pipeline import config, io
-from treemap_pipeline.build import geo, hex_base, landcover
-from treemap_pipeline.sources import census, nlcd
+from treemap_pipeline.build import canopy, geo, hex_base, landcover
+from treemap_pipeline.sources import census, nlcd, tcc
 
 # Fetch steps download or clip sources; the others only build, so P1 (perf-budget,
 # downloads excluded) is the sum of the build steps.
-STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover")
-FETCH_STEPS = {"fetch_nlcd"}
+STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover", "fetch_tcc", "canopy")
+FETCH_STEPS = {"fetch_nlcd", "fetch_tcc"}
+# Years clipped at once by a fetch step (range reads; a few at a time is polite to the host).
+FETCH_WORKERS = 3
 
 
 def run_geo() -> list[dict]:
@@ -39,30 +41,51 @@ def pilot_geometry() -> dict:
     return geo.read_state_geometry(geo.connect(), census.download_all()["state"], config.PILOT_FIPS)
 
 
-def run_fetch_nlcd() -> list[dict]:
-    clips = nlcd.fetch_all(pilot_geometry(), hex_base.members((5,))[5])
-    print(f"  nlcd: {len(clips)} clipped years in {nlcd.raw_dir() / 'clip'}")
+def fetch(source) -> list[dict]:
+    clips = source.fetch_all(pilot_geometry(), hex_base.members((5,))[5], workers=FETCH_WORKERS)
+    print(f"  {source.source}: {len(clips)} clipped years in {source.raw_dir() / 'clip'}")
     return []
 
 
-def run_landcover() -> list[dict]:
-    missing = [y for y in nlcd.YEARS if not nlcd.clip_path(y).exists()]
+def clips_or_exit(source) -> dict:
+    missing = [y for y in source.years if not source.clip_path(y).exists()]
     if missing:
-        raise SystemExit(f"Annual NLCD clips missing for {missing[0]}–{missing[-1]}: run `uv run treemap-pipeline fetch_nlcd` first")
-    members = hex_base.members()
-    tables = landcover.build_landcover({y: nlcd.clip_path(y) for y in nlcd.YEARS}, members)
+        raise SystemExit(f"{source.source} clips missing for {missing[0]}–{missing[-1]}: run `uv run treemap-pipeline fetch_{source.source}` first")
+    return {y: source.clip_path(y) for y in source.years}
+
+
+def write_table(tables: dict, name: str, sources: list[str]) -> list[dict]:
+    """Write res 5–7 to data/out (manifest records returned) and res 8 to data/work."""
     records = []
     for res, table in tables.items():
         out = config.OUT if res in config.RES_SHIPPED else config.WORK
-        written = io.write_partitioned(table, "hex_landcover", res, out, ["nlcd"])
+        written = io.write_partitioned(table, name, res, out, sources)
         if res in config.RES_SHIPPED:
             records += written
-        print(f"  hex_landcover r{res}: {table.num_rows:,} hex-years")
+        print(f"  {name} r{res}: {table.num_rows:,} hex-years")
+    return records
+
+
+def run_landcover() -> list[dict]:
+    tables = landcover.build_landcover(clips_or_exit(nlcd.SOURCE), hex_base.members())
+    records = write_table(tables, "hex_landcover", ["nlcd"])
     records += hex_base.fill("land_frac", landcover.land_frac(tables, max(nlcd.YEARS)), ["nlcd"])
     return records
 
 
-RUNNERS = {"geo": run_geo, "hex_base": run_hex_base, "fetch_nlcd": run_fetch_nlcd, "landcover": run_landcover}
+def run_canopy() -> list[dict]:
+    tables = canopy.build_canopy(clips_or_exit(tcc.SOURCE), hex_base.members())
+    return write_table(tables, "hex_canopy", ["tcc"])
+
+
+RUNNERS = {
+    "geo": run_geo,
+    "hex_base": run_hex_base,
+    "fetch_nlcd": lambda: fetch(nlcd.SOURCE),
+    "landcover": run_landcover,
+    "fetch_tcc": lambda: fetch(tcc.SOURCE),
+    "canopy": run_canopy,
+}
 
 
 def main() -> None:

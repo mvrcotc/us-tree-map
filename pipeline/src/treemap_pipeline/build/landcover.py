@@ -58,10 +58,7 @@ def build_landcover(clips: dict[int, Path], members: dict[int, np.ndarray], cach
                 ds.close()
         if rolled_totals is None:
             rolled_totals = raster.rollup(totals, members, [], ["n_total"])
-            for res, cells in members.items():
-                covered = len(rolled_totals[res])
-                if covered != len(cells):
-                    raise ValueError(f"r{res}: {len(cells) - covered} hex_base hexes have no pixels in the clip")
+            raster.require_coverage(rolled_totals, members)
         for year, c in zip(batch, counts):
             rolled = raster.rollup(c, members, ["class"], ["n"])
             for res in members:
