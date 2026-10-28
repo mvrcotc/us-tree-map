@@ -1,0 +1,29 @@
+# Dependencies and builds
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Data: local only; published copies go to R2
+data/
+
+# Secrets and personal settings
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
