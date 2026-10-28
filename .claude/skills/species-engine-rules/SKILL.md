@@ -11,7 +11,7 @@ Status: proposed during planning. Every threshold below is a v0 number to confir
 
 From `tree-map-data-contract`: `hex_base`, `hex_bps`, `hex_landcover` and `hex_canopy` (latest year, plus 1985), `hex_trees`, `hex_zone`, `atlas_r3` (via the hex's `p3`), `hex_pests`, `hex_need`, `catalog/species.json`, `catalog/pests.json`. From the store: `scenario` (`'rcp45'` or `'rcp85'`) and `weights`.
 
-Candidates (v1): the 125 Tree Atlas species. Open decision D3 in the data contract may add urban species; those get no climate component and always carry the `NO_PROJECTION` flag.
+Candidates (v1): the 125 Tree Atlas species (decision D3). Urban species without projections wait until after launch.
 
 ## Step 1: hex flags (shown above the list)
 
@@ -19,17 +19,18 @@ Candidates (v1): the 125 Tree Atlas species. Open decision D3 in the data contra
 | --- | --- | --- |
 | `RESTORE_OPEN` | `bps_open_frac ≥ 0.5` and `frac_developed < 0.3` | Historically prairie or shrubland. Native grassland restoration may fit better than planting trees. The tree list collapses behind "Show trees anyway". |
 | `REFOREST` | `bps_forest_frac ≥ 0.5` and canopy fell by ≥ 0.15 since 1985 | Lost forest canopy since 1985: reforestation candidate. |
+| `RESTORE_SAVANNA` | `bps_savanna_frac ≥ 0.5` and `frac_developed < 0.3` | Historically oak savanna: widely spaced native oaks with prairie beneath. The tree list stays visible. |
 | `NO_ATLAS` | `in_atlas` is false | No climate projection here. Climate component is skipped; confidence is capped at low. |
 | `SMALL_SAMPLE` | `atlas_r3.pooled` is true | Climate fit pooled with neighboring areas. |
 
-Savanna handling depends on decision D8.
+Savanna counts toward neither `RESTORE_OPEN` nor `REFOREST` (decision D8).
 
 ## Step 2: gates (remove a species, keep the reason for "Why not X?")
 
 | gate | condition (v0) | reason shown |
 | --- | --- | --- |
 | G1 hardiness | species `min_zone_num` > hex `zone_coldest_num` | Not cold-hardy here (zone {z}). |
-| G2 lethal pest | an agent with `status = 'present'` in the hex or its county has Potter severity ≥ 9 on this species | {pest} is present nearby; severity {s}/10. |
+| G2 lethal pest | an agent with `status = 'present'` nearby: an IDS row for the hex (which already covers its res-6 ring of neighbors and the last 10 survey years, decision D5) or a NAPIS row for its county has Potter severity ≥ 9 on this species | {pest} is present nearby; severity {s}/10. |
 | G3 habitat collapse | `atlas_r3` ratio < 0.5 for the scenario (mean of 3 GCMs) | Suitable habitat projected to fall by more than half by 2100. |
 | G4 no habitat | `change_class = 'absent'` for the scenario | No suitable habitat now or by 2100. |
 
@@ -43,7 +44,7 @@ Potter severity scale (Potter et al. 2019): 10 near-complete mortality of mature
   - If the three GCMs disagree on direction (some ratio > 1, some < 1), multiply by 0.8 and add the downgrade below.
   - Null when `NO_ATLAS` or the species isn't modeled.
 - **pest**: `1 − max(severity)/10` over agents with `status = 'present'` that list this species as a host; 1.0 when none. Unknown pest status is not "absent": if the county has no survey rows, add the downgrade below.
-- **need**: hex `need` × size factor (`large` 1.0, `medium` 0.7, `small` 0.4). Null when `need` is null.
+- **need**: hex `need` × size factor (`large` 1.0, `medium` 0.7, `small` 0.4). Null when `need` is null: outside Tree Equity Score coverage that means not applicable (decision D4). In public builds need is null everywhere until American Forests gives permission (decision D7), and the need slider is hidden.
 
 ## Step 4: score
 
@@ -65,7 +66,7 @@ At most four chips per species, ordered by weighted contribution. Each chip has 
 
 ## Step 6: confidence (label plus icon, never color alone)
 
-Start at high. Drop one level for each: Atlas reliability `low`; GCMs disagree on direction; `pooled`; pest survey status unknown for the county; need is null while the need weight is above 0. Two or more drops → low. `NO_ATLAS` → low.
+Start at high. Drop one level for each: Atlas reliability `low`; GCMs disagree on direction; `pooled`; pest survey status unknown for the county; need is null while the need weight is above 0 and the hex has `tes_cover_frac ≥ 0.5` (inside TES coverage but missing a value). Outside TES coverage a null need costs no confidence (decision D4). Two or more drops → low. `NO_ATLAS` → low.
 
 ## Output (TypeScript)
 
@@ -102,8 +103,9 @@ type HexResult = {
 - T4: species `no_change` under RCP 4.5 and `decrease` under 8.5 → its rank drops when the scenario switches.
 - T5: hex coldest zone 5a, species minimum 6a → G1.
 - T6: weights `{native: 1, others: 0}` → order follows the native component, then the tie rules.
-- T7: need null → need skipped, weights renormalized, confidence dropped when the need weight > 0.
+- T7: need null inside TES coverage → need skipped, weights renormalized, confidence dropped when the need weight > 0. Need null outside TES coverage → skipped, confidence unchanged.
 - T8: Atlas reliability low → confidence at most medium.
 - T9: calling twice with the same inputs gives deep-equal results.
+- T10: `bps_savanna_frac 0.6`, `frac_developed 0.1` → `RESTORE_SAVANNA`, not `RESTORE_OPEN`; the ranked list is not collapsed.
 
 Phase 1 adds five real hexes from the pilot state, each checked by hand against the source maps: record the hex id, the expected exclusions or top three, and why.

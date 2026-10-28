@@ -6,7 +6,7 @@ An animated 3D map of US tree history, climate fit and pest risk with linked cha
 
 ## Corrections (checked Oct 27, 2026): these override the sections below
 
-1. **The Tree Atlas has no 2050 projection.** Its habitat models (DISTRIB-II, [RDS-2019-0029](https://www.fs.usda.gov/rds/archive/catalog/RDS-2019-0029)) give a 1981–2010 baseline and one future period, 2070–2099 (CCSM4, GFDL CM3, HadGEM2-ES × RCP 4.5 and 8.5). The time control's 2050 step has no source yet. Decide in Phase 0: drop it, or add a separate 2050 layer.
+1. **The Tree Atlas has no 2050 projection.** Its habitat models (DISTRIB-II, [RDS-2019-0029](https://www.fs.usda.gov/rds/archive/catalog/RDS-2019-0029)) give a 1981–2010 baseline and one future period, 2070–2099 (CCSM4, GFDL CM3, HadGEM2-ES × RCP 4.5 and 8.5). The time control's 2050 step has no source yet. Decided (D1): the 2050 step is dropped; the time control ends at 2070–2099.
 2. **Tree Atlas results are regional.** The Atlas asks that results be summarized over at least 8,000 km² ([cautions](https://www.fs.usda.gov/nrs/atlas/tree/v4/modals/info.php)); models run on a 10 km / 20 km hybrid lattice. The engine reads climate fit at H3 resolution 3 (about 12,400 km² average), never per small hex.
 3. **"Canopy change" needs a canopy source.** Annual NLCD (1985–2024) is land-cover classes, not % tree canopy. Use USFS Tree Canopy Cover ([NLCD TCC v2023.5](https://data.fs.usda.gov/geodata/rastergateway/treecanopycover), 30 m, annual 1985–2023) for the canopy metric; keep Annual NLCD for the land-cover chart.
 4. **TreeMap 2023 is out** ([RDS-2026-0038](https://www.fs.usda.gov/rds/archive/catalog/RDS-2026-0038), 30 m, circa 2023). Use it instead of TreeMap 2020.

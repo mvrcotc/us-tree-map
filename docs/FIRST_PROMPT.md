@@ -58,7 +58,7 @@ One session per phase is plenty. Each phase plans first and ends with the review
 | --- | --- | --- |
 | 1 · Data pipeline | Start Phase 1 from docs/PLAN.md and the data contract. Plan first. Before downloading anything, tell me file sizes and the disk space needed. One layer per step, each with tests; finish with the 20-hex spot check. | Opus 5.5 |
 | 2 · 3D stage | Start Phase 2 from docs/PLAN.md and viz-style-guide's Stage section, including the city-view handoff to the street map. Plan first. Finish by measuring F1–F5 from perf-budget on my laptop. | Opus 5.5; Fable 5.1 for a rendering or shader bug Opus can't fix |
-| 3 · Charts + engine | Start Phase 3. Build the species engine and tests T1–T9 first, then the six linked panels. Finish by measuring U1–U3. | Opus 5.5 for the engine, Sonnet 5.5 for the panels |
+| 3 · Charts + engine | Start Phase 3. Build the species engine and tests T1–T10 first, then the six linked panels. Finish by measuring U1–U3. | Opus 5.5 for the engine, Sonnet 5.5 for the panels |
 | 4 · Polish | Start Phase 4: motion, guided tour, quality tiers, mobile layout, source links, accessibility; the optional procedural trees if time allows. Finish with the accessibility review and L1–L4. | Sonnet 5.5; Opus 5.5 for the tour's camera choreography |
 | 5 · Launch | Start Phase 5: deploy to Cloudflare Pages and R2, add the feedback form, run the launch checklist. | Sonnet 5.5 |
 

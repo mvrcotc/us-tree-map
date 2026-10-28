@@ -183,13 +183,13 @@ Pooling: assign Atlas lattice cells to a res-3 cell by centroid. If the pool cov
 - Row counts and value ranges written to the manifest.
 - Phase 1 gate: `pipeline/qa/spot_check.py` samples 20 random res-7 hexes (fixed seed) and writes `docs/qa/phase1_spotcheck.csv` (hex, layer, our value, source value, match, note) for Marco to check against the source viewers.
 
-## Open decisions (resolve in Phase 0)
+## Decisions (made by Marco, Oct 27, 2026)
 
-- D1. 2050 time step: the Tree Atlas has only 2070–2099. Drop 2050, or add a separate 2050 source (none chosen yet).
-- D2. Canopy product: NLCD TCC (cleaner maps) or Science TCC (has standard error); and how the slider shows layers whose years end at 2023 vs 2024.
-- D3. Candidate species: Tree Atlas 125 only, or add common urban species without climate projections (always flagged).
-- D4. Need outside TES coverage: leave NULL, or define a rural measure (e.g. historical forest share minus current canopy).
-- D5. Pest window and neighborhood: which IDS years, and whether "nearby" means the hex, the county, or a k-ring.
-- D6. Species hardiness source: which dataset gives `min_zone_num` for all candidates.
-- D7. TES license confirmation.
-- D8. Whether savanna counts as open (restoration flag) or forest in the engine.
+- D1. **No 2050 step.** The time control runs pre-settlement → 1985 … 2024 → 2070–2099. A mid-century source can be added later as its own layer.
+- D2. **Canopy: NLCD TCC** (`tcc`). The slider runs to 2024; at 2024 the canopy layer shows its 2023 values with a visible "latest: 2023" badge in the legend, tooltip and chart. The same rule applies to any layer whose years end before the slider's year: show its latest earlier year, always labeled with that year.
+- D3. **Candidates: the 125 Tree Atlas species only** for v1. Urban species without projections wait until after launch.
+- D4. **Need outside TES coverage is NULL** (not applicable). The engine skips the need component there without lowering confidence (`species-engine-rules` → Step 6).
+- D5. **Pests:** IDS uses the last 10 survey years; "nearby" means the hex or its res-6 ring of neighbors (`grid_disk` k = 1, about 10 km). NAPIS stays county-level. `hex_pests` rows from IDS carry `level = 'hex'` and already include the ring.
+- D6. **Species hardiness:** USDA PLANTS "Temperature, Minimum (°F)" converted to a half-zone; where missing, the coldest PHZM half-zone among FIA/TreeMap plots recording the species. `min_zone_source` is `'plants'` or `'fia_range'`.
+- D7. **Tree Equity Score: hold until written OK.** Marco emails American Forests. Until permission arrives in writing, the pipeline may build `hex_need` locally but never publishes it, and public builds hide the need layer and weight (need is NULL everywhere).
+- D8. **Savanna is its own class.** `bps_savanna_frac` counts toward neither open nor forest. It drives the `RESTORE_SAVANNA` hex flag (`species-engine-rules` → Step 1).

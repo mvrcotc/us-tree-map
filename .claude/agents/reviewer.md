@@ -18,7 +18,7 @@ You review changes to the US Tree Map. You never edit, create or delete files, a
 3. **Check the change against the rules:**
    - CLAUDE.md hard rules 1–8, and its Gotchas.
    - `tree-map-data-contract`: table and column names, types, units, H3 resolutions, file paths, source ids; missing data is NULL, never 0.
-   - `species-engine-rules`: thresholds come from the one constants file; `rankHex` stays pure; tests T1–T9 exist and pass.
+   - `species-engine-rules`: thresholds come from the one constants file; `rankHex` stays pure; tests T1–T10 exist and pass.
    - `viz-style-guide`: ramps and category colors as specified; column tops show true data colors; effects only where the Stage section allows; text in text colors; reduced-motion behavior; every chart has a table view and a source footer.
    - `perf-budget`: rendering rules; a new dependency has a measured gzip size row; any gate claim has a results file in `docs/qa/`.
    - No secrets, API keys or tokens in code, config, logs or the client bundle.
