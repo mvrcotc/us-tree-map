@@ -12,6 +12,7 @@ const VIEWS = [
 ] as const
 
 test('three.js layer aligns with map.project at four camera angles', async ({ page }) => {
+  test.setTimeout(600_000) // four views, each waiting for street-map tiles on software WebGL
   await openStage(page)
   const report: string[] = []
   for (const v of VIEWS) {

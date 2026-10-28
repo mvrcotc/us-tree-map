@@ -4,7 +4,7 @@
  * custom layer (CLAUDE.md → Gotchas → Map + 3D layer sync).
  */
 import { Canvas } from '@react-three/fiber'
-import { Map as MLMap, setWorkerUrl, type LngLatBoundsLike } from 'maplibre-gl'
+import { Map as MLMap, setWorkerUrl, type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
@@ -12,6 +12,7 @@ import type * as THREE from 'three'
 import { BASEMAP_STYLE, dataUrl } from '../config'
 import { loadHexes } from '../data/client'
 import { useStore } from '../store'
+import { mutedPositron } from '../theme/basemap'
 import { bridge } from './bridge'
 import { createSyncLayer } from './mapSync'
 import { Scene } from './Scene'
@@ -36,6 +37,49 @@ function bboxOf(fc: FeatureCollection): LngLatBoundsLike {
   return [[w, s], [e, n]]
 }
 
+function createMap(container: HTMLElement, style: StyleSpecification): MLMap {
+  const map = new MLMap({
+    container,
+    style,
+    center: [-89.9, 44.8],
+    zoom: 5.8,
+    pitch: 45,
+    bearing: -8,
+    maxPitch: 85,
+    attributionControl: { compact: true },
+  })
+  bridge.map = map
+
+  map.on('load', async () => {
+    const [state, counties] = await Promise.all([
+      fetch(dataUrl('geo/state.json')).then((r) => r.json()),
+      fetch(dataUrl('geo/counties.json')).then((r) => r.json()),
+    ])
+    map.addSource('counties', { type: 'geojson', data: counties })
+    map.addSource('state', { type: 'geojson', data: state })
+    map.addLayer({ id: 'county-lines', type: 'line', source: 'counties', paint: { 'line-color': '#9aa7b4', 'line-width': 0.5, 'line-opacity': 0.6 } })
+    map.addLayer({ id: 'state-outline', type: 'line', source: 'state', paint: { 'line-color': '#4f5d6b', 'line-width': 1.2 } })
+    map.addLayer(createSyncLayer())
+    const reduced = useStore.getState().reducedMotion
+    map.fitBounds(bboxOf(state), { padding: 60, pitch: 45, bearing: -8, duration: reduced ? 0 : 1200 })
+  })
+
+  map.on('click', (e) => {
+    const columns = bridge.columns
+    if (!columns) return
+    const i = columns.pick(e.point.x, e.point.y)
+    if (i < 0) return
+    useStore.getState().select(columns.ids[i])
+    const center = columns.lngLat(i)
+    // Reduced motion: jump, don't fly. Never pass `essential: true` (CLAUDE.md → Gotchas).
+    if (useStore.getState().reducedMotion) map.jumpTo({ center, zoom: FLY_ZOOM, pitch: FLY_PITCH })
+    else map.flyTo({ center, zoom: FLY_ZOOM, pitch: FLY_PITCH, duration: 1500 })
+  })
+
+  if (new URLSearchParams(location.search).has('test')) installTestHooks()
+  return map
+}
+
 export function Stage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const hexData = useStore((s) => s.hexData)
@@ -45,49 +89,19 @@ export function Stage() {
   }, [])
 
   useEffect(() => {
-    const map = new MLMap({
-      container: mapContainer.current!,
-      style: BASEMAP_STYLE,
-      center: [-89.9, 44.8],
-      zoom: 5.8,
-      pitch: 45,
-      bearing: -8,
-      maxPitch: 85,
-      attributionControl: { compact: true },
-    })
-    bridge.map = map
-
-    map.on('load', async () => {
-      const [state, counties] = await Promise.all([
-        fetch(dataUrl('geo/state.json')).then((r) => r.json()),
-        fetch(dataUrl('geo/counties.json')).then((r) => r.json()),
-      ])
-      map.addSource('counties', { type: 'geojson', data: counties })
-      map.addSource('state', { type: 'geojson', data: state })
-      map.addLayer({ id: 'county-lines', type: 'line', source: 'counties', paint: { 'line-color': '#9aa7b4', 'line-width': 0.5, 'line-opacity': 0.6 } })
-      map.addLayer({ id: 'state-outline', type: 'line', source: 'state', paint: { 'line-color': '#4f5d6b', 'line-width': 1.2 } })
-      map.addLayer(createSyncLayer())
-      const reduced = useStore.getState().reducedMotion
-      map.fitBounds(bboxOf(state), { padding: 60, pitch: 45, bearing: -8, duration: reduced ? 0 : 1200 })
-    })
-
-    map.on('click', (e) => {
-      const columns = bridge.columns
-      if (!columns) return
-      const i = columns.pick(e.point.x, e.point.y)
-      if (i < 0) return
-      useStore.getState().select(columns.ids[i])
-      const center = columns.lngLat(i)
-      // Reduced motion: jump, don't fly. Never pass `essential: true` (CLAUDE.md → Gotchas).
-      if (useStore.getState().reducedMotion) map.jumpTo({ center, zoom: FLY_ZOOM, pitch: FLY_PITCH })
-      else map.flyTo({ center, zoom: FLY_ZOOM, pitch: FLY_PITCH, duration: 1500 })
-    })
-
-    if (new URLSearchParams(location.search).has('test')) installTestHooks()
-
+    let map: MLMap | null = null
+    let cancelled = false
+    // Fetch Positron and mute it before MapLibre sees it (theme/basemap.ts).
+    fetch(BASEMAP_STYLE)
+      .then((r) => r.json())
+      .then((style: StyleSpecification) => {
+        if (!cancelled) map = createMap(mapContainer.current!, mutedPositron(style))
+      })
+      .catch((err) => console.error(err))
     return () => {
-      bridge.map = null
-      map.remove()
+      cancelled = true
+      if (map && bridge.map === map) bridge.map = null
+      map?.remove()
     }
   }, [])
 

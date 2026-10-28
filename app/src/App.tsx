@@ -1,23 +1,13 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import { PILOT_NAME } from './config'
 import { Stage } from './stage/Stage'
 import { useStore } from './store'
 import { Overlay } from './ui/Overlay'
+import { useReducedMotion } from './ui/useReducedMotion'
 import { YearSlider } from './ui/YearSlider'
 
 // ECharts loads after the first frame with hexes (perf-budget: keeps it off the critical path).
 const YearPanel = lazy(() => import('./charts/YearPanel'))
-
-function useReducedMotion() {
-  const setReducedMotion = useStore((s) => s.setReducedMotion)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(mq.matches)
-    const onChange = () => setReducedMotion(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [setReducedMotion])
-}
 
 function hasWebGL2() {
   try {

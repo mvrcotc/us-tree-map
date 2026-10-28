@@ -5,11 +5,12 @@ Run Oct 27, 2026 on Marco's MacBook (Apple silicon), `npx playwright test` again
 | Check | Rule | Result |
 | --- | --- | --- |
 | Layer alignment vs `map.project`, 20 points per view | ≤ 1 px (perf-budget → Rendering rules) | top-down 0.000 px · 55° tilt 0.000 px · 70° tilt 0.000 px · street zoom (15.5) 0.000 px: **pass** |
-| Column-top colors vs ramp, 120 tops, grain off, top-down | OKLab ΔE × 100 ≤ 3 (viz-style-guide → True data colors) | worst 0.61 (`#228944` vs `#238b45`): **pass** |
+| Column-top colors vs ramp, ~115 tops, grain and vignette off, top-down | OKLab ΔE × 100 ≤ 3 (viz-style-guide → True data colors) | worst 0.61 (first run); 1.01 after the muted basemap (`#015732` vs `#005a32`): **pass**. With the CSS vignette on, a top at the frame edge reached 3.54, so the test turns the overlay off |
 | Smoke: map, columns, synthetic label, chart after first hex frame | — | pass; screenshot `docs/img/smoke.png` |
 | Year slider → store → chart marker | — | pass |
 | Click a hex (reduced motion) → selected, camera jumps to zoom 9.5 | viz-style-guide → Motion | pass |
-| Vitest: store, Mercator frame | — | 8 tests pass |
+| Vitest: store, Mercator frame, palette checks (ramps, colorblind separation, contrast) | viz-style-guide → How to check a palette change | 20 tests pass |
+| Mock route renders every panel; need slider disabled (D7) | — | pass; screenshot `docs/img/mock-v1.png` |
 
 ## Bundle (perf-budget L1, L2; `npm run size`, gzip -9)
 

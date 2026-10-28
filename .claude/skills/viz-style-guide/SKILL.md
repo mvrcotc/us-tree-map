@@ -54,7 +54,7 @@ One metric shows at a time; each has its own hue family so switching metrics nev
 - Diverging height uses the absolute value; color carries the sign. The legend states the sign in words ("loss", "gain").
 - No data: not extruded, hairline outline only, and the legend has a "no data" swatch. Never color no-data as the low end.
 - Classes: 6 quantized classes per sequential metric (7 for diverging) with fixed breaks per metric, not per view, so colors mean the same thing everywhere. Breaks are documented in `app/src/theme/`.
-- Checked Oct 27, 2026 (OKLCH): every ramp above reads light → dark monotonically, stays in one hue family per arm, and keeps ≥ 0.06 lightness between steps. Their lightest steps fall below 2:1 contrast on a light surface by design (near zero recedes), so never use a ramp's lightest step for a labeled tier. Re-check all ramps if the stage's ground goes dark.
+- Checked Oct 27, 2026 (OKLCH): every ramp above reads light → dark monotonically, stays in one hue family per arm, and keeps ≥ 0.06 lightness between colored steps. Re-measured in Phase 0 (`app/src/theme/palette.test.ts`): the step from a diverging ramp's neutral midpoint to its first colored step is smaller (BrBG loss 0.037, BrBG gain 0.060, PuOr decrease 0.055, PuOr increase 0.084); those classes are told apart by hue and chroma, and the legend labels them in words. Their lightest steps fall below 2:1 contrast on a light surface by design (near zero recedes), so never use a ramp's lightest step for a labeled tier. Re-check all ramps if the stage's ground goes dark.
 
 ## Chart categories (land cover, past vs. now)
 
