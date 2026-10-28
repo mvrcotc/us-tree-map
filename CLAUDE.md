@@ -10,7 +10,7 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 ## Status (update when a gate passes)
 
 - Current phase: **0 · Setup**. Gate: mockup and data contract approved.
-- Pilot state: **not chosen yet**.
+- Pilot state: **Wisconsin** (chosen Oct 27, 2026; see `docs/pilot-state.md`).
 
 ## Hard rules
 
