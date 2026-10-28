@@ -9,13 +9,13 @@ A free, public-good web app: an animated 3D hex map of US tree history, climate 
 
 ## Status (update when a gate passes)
 
-- Current phase: **1 · Data pipeline** (not started). Gate: 20 random hexes spot-checked against the source maps (`docs/PLAN.md`).
+- Current phase: **1 · Data pipeline** (step 1 of 12, source checks, done Oct 28, 2026; plan approved by Marco). Gate: 20 random hexes spot-checked against the source maps (`docs/PLAN.md`). Waiting on Marco: Annual NLCD 1.1 → 1.2 and TCC v2023.5 → v2025-6 (both now 1985–2025), and IDS years (the reachable service has 2021–2025 only; D5 asks for 10).
 - Phase 0 · Setup: **done Oct 27, 2026.** Marco approved the mock (`docs/img/mock-v1.png`, route `/mock`) and the data contract (v1). Evidence: `docs/qa/phase0-smoke.md`.
 - Pilot state: **Wisconsin** (chosen Oct 27, 2026; see `docs/pilot-state.md`).
 - Decisions D1–D8 are made (data contract → Decisions); v0 numbers confirmed (`docs/numbers-v0.md`).
 - Waiting on outside replies: Tree Equity Score permission (D7; draft in `docs/drafts/tes-permission-email.md`), NAPIS / Pest Tracker terms (not confirmed).
 - Repo: https://github.com/mvrcotc/us-tree-map (public, MIT).
-- Carried into later phases (reviewer, Oct 27, 2026): keyboard selection of hexes with a text readout (hard rule 5; Phase 2 gate), the selected hex's primary-ink outline (viz-style-guide → Selection; Phase 2), and the About panel with `catalog/sources.json` (hard rule 7; before any real data ships). Retry the `ids` and `bps` source checks before the Phase 1 downloads (both servers were down).
+- Carried into later phases (reviewer, Oct 27, 2026): keyboard selection of hexes with a text readout (hard rule 5; Phase 2 gate), the selected hex's primary-ink outline (viz-style-guide → Selection; Phase 2), and the About panel with `catalog/sources.json` (hard rule 7; before any real data ships). The `ids` and `bps` checks were retried on Oct 28, 2026; results are in the data contract's Verified column.
 
 ## Hard rules
 
