@@ -35,15 +35,19 @@ NODATA_IN = -9999.0
 NODATA = 255
 HALF_ZONES = 26  # 1a … 13b
 UPSAMPLE = 4
+T_MIN, T_MAX = -60.0, 70.0  # metadata rdommin / rdommax (°F); outside → nodata, not a made-up zone
+# Bump when half_zone_index or the clip layout changes: the sidecar check then re-clips.
+CLIP_VERSION = 2
 DISCLAIMER = "Not the official USDA Plant Hardiness Zone Map."
 
 
 def half_zone_index(temp_f: np.ndarray) -> np.ndarray:
-    """uint8 half-zone index from °F (NaN or nodata → NODATA). A value on a band edge goes to the warmer half-zone."""
+    """uint8 half-zone index from °F. A value on a band edge goes to the warmer half-zone;
+    NaN, nodata and values outside T_MIN–T_MAX give NODATA (T_MAX itself is 13b)."""
     t = np.asarray(temp_f, dtype=np.float64)
-    ok = np.isfinite(t) & (t != NODATA_IN)
+    ok = np.isfinite(t) & (t != NODATA_IN) & (t >= T_MIN) & (t <= T_MAX)
     idx = np.full(t.shape, NODATA, dtype=np.uint8)
-    idx[ok] = np.clip(np.floor((t[ok] + 60) / 5), 0, HALF_ZONES - 1).astype(np.uint8)
+    idx[ok] = np.minimum(np.floor((t[ok] - T_MIN) / 5), HALF_ZONES - 1).astype(np.uint8)
     return idx
 
 
@@ -74,6 +78,9 @@ def clip(geometry: dict, cover_cells: np.ndarray) -> Path:
             "width": int(window.width),
             "height": int(window.height),
             "upsample": UPSAMPLE,
+            "version": CLIP_VERSION,
+            "nodata": NODATA,
+            "zip_bytes": zip_path.stat().st_size,
         }
         if dest.exists() and _read(sidecar) == record:
             return dest

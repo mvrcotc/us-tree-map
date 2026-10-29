@@ -242,10 +242,29 @@ def test_mismatched_grid_and_signed_dtype_fail(tif, grid, tmp_path):
     with rasterio.open(shifted) as ds, pytest.raises(ValueError, match="not on the grid"):
         raster.categorical_counts(ds, grid, CLASSES)
     signed = tmp_path / "signed.tif"
-    with rasterio.open(signed, "w", **{**profile, "dtype": "int16", "nodata": -1}) as ds:
-        ds.write(np.zeros((SIZE, SIZE), np.int16), 1)
+    with rasterio.open(signed, "w", **{**profile, "dtype": "int32", "nodata": -1}) as ds:
+        ds.write(np.zeros((SIZE, SIZE), np.int32), 1)
     with rasterio.open(signed) as ds, pytest.raises(ValueError, match="unsigned"):
         raster.categorical_counts(ds, grid, CLASSES)
+
+
+def test_signed_16_bit_categories(tmp_path):
+    """int16 with negative fill codes (LANDFIRE): negatives are invalid, classes count exactly."""
+    rng = np.random.default_rng(9)
+    data = rng.choice(np.array([-9999, -1111, 5, 300, 2726, 40]), size=(400, 400))
+    path = _int_raster(tmp_path / "bps.tif", data, nodata=-9999, dtype="int16")
+    classes = [5, 300, 2726]
+    with rasterio.open(path) as ds:
+        g = raster.cell_grid(ds, None, cache_dir=tmp_path / "g")
+        counts, totals = raster.categorical_counts(ds, g, classes)
+        with pytest.raises(ValueError, match="classes must lie"):
+            raster.categorical_counts(ds, g, [-1111, 5])
+    got = {c: n for c, n in zip(counts["class"].to_pylist(), counts["n"].to_pylist())}
+    by_class = {}
+    for c, n in got.items():
+        by_class[c] = by_class.get(c, 0) + n
+    assert {c: sum(n for k, n in zip(counts["class"].to_pylist(), counts["n"].to_pylist()) if k == c) for c in classes} == {c: int((data == c).sum()) for c in classes}
+    assert pc.sum(totals["n_total"]).as_py() == data.size
 
 
 def test_parents_vectorized_matches_h3():

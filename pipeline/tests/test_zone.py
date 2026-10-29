@@ -3,6 +3,7 @@
 import zipfile
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import pytest
@@ -20,9 +21,11 @@ PX, SIZE = 0.0005, 300  # about 40 × 55 m: many pixels per res-8 hex
 
 
 def test_half_zone_index_and_labels():
-    t = np.array([-60, -55.01, -55, -10, -5.5, -5, 0, 69.9, -9999, np.nan, -80, 90])
+    t = np.array([-60, -55.01, -55, -10, -5.5, -5, 0, 69.9, 70, -9999, np.nan, -60.01, 70.01])
     idx = phzm.half_zone_index(t)
-    assert idx.tolist() == [0, 0, 1, 10, 10, 11, 12, 25, 255, 255, 0, 25]
+    assert idx.tolist() == [0, 0, 1, 10, 10, 11, 12, 25, 25, 255, 255, 255, 255]
+    # The source grid is float32: band edges must hold there too.
+    assert phzm.half_zone_index(np.array([-5.0, -55.0, -5.0001], np.float32)).tolist() == [11, 1, 10]
     assert [phzm.label(i) for i in (0, 1, 10, 11, 25)] == ["1a", "1b", "6a", "6b", "13b"]
     assert [phzm.number(i) for i in (10, 11, 6)] == [6.0, 6.5, 4.0]
 
@@ -92,6 +95,15 @@ def test_all_nodata_hex_is_null(built, clip):
     assert row["valid_frac"][0].as_py() == 0
 
 
+def test_mode_tie_goes_to_the_colder_half_zone():
+    counts = pa.table({"h3": pa.array([7, 7, 7], pa.uint64()), "res": pa.array([8] * 3, pa.int8()), "p3": pa.array([1] * 3, pa.uint64()), "class": pa.array([12, 10, 11], pa.int32()), "n": pa.array([5, 9, 9], pa.int64())})
+    totals = pa.table({"h3": pa.array([7], pa.uint64()), "res": pa.array([8], pa.int8()), "p3": pa.array([1], pa.uint64()), "n_total": pa.array([23], pa.int64())})
+    row = zone._zones(counts, totals)
+    assert row["zone_mode"][0].as_py() == "6a"  # 6a and 6b tie at 9 pixels
+    assert row["zone_coldest"][0].as_py() == "6a"
+    assert row["valid_frac"][0].as_py() == 1.0
+
+
 def test_coldest_is_coldest_of_children(built):
     """A parent's coldest half-zone is the coldest of its children's (roll-up of counts)."""
     import h3
@@ -136,6 +148,9 @@ def test_real_output_if_built():
     if not path.exists():
         pytest.skip("hex_zone not built")
     t = pq.read_table(path)
+    assert t["zone_coldest"].null_count == 0 and t["zone_mode"].null_count == 0
+    vf = t["valid_frac"].to_numpy(zero_copy_only=False)
+    assert ((vf > 0) & (vf <= 1)).all()
     num = t["zone_coldest_num"].to_numpy(zero_copy_only=False)
     # Wisconsin on the 2023 map spans 3b–6a (3.5–6.0).
     assert np.nanmin(num) >= 3.0 and np.nanmax(num) <= 6.5

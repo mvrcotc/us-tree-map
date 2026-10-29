@@ -1,16 +1,18 @@
 {
- "run_at": "2026-10-29T15:46:41+00:00",
+ "run_at": "2026-10-29T15:50:49+00:00",
  "pilot": "WI",
  "steps": [
+  "fetch_phzm",
   "zone"
  ],
  "full_run": false,
  "steps_s": {
-  "zone": 15.98
+  "fetch_phzm": 1.67,
+  "zone": 1.61
  },
- "total_s": 15.98,
- "build_s": 15.98,
- "peak_rss_mb": 853,
+ "total_s": 3.28,
+ "build_s": 1.61,
+ "peak_rss_mb": 499,
  "by_step": {
   "landcover": {
    "s": 321.35,
@@ -18,14 +20,14 @@
    "peak_rss_mb": 1673
   },
   "fetch_phzm": {
-   "s": 13.68,
-   "run_at": "2026-10-29T15:46:15+00:00",
-   "peak_rss_mb": 243
+   "s": 1.67,
+   "run_at": "2026-10-29T15:50:49+00:00",
+   "peak_rss_mb": null
   },
   "zone": {
-   "s": 15.98,
-   "run_at": "2026-10-29T15:46:41+00:00",
-   "peak_rss_mb": 853
+   "s": 1.61,
+   "run_at": "2026-10-29T15:50:49+00:00",
+   "peak_rss_mb": null
   }
  },
  "note": "perf-budget P1 = build_s when full_run is true (fetch steps excluded); one layer \u2264 10 min per by_step entry; geo and hex_base include the small Census download on a first run"

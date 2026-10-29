@@ -212,7 +212,7 @@ def categorical_counts_many(datasets: list[rasterio.DatasetReader], grid: CellGr
     lookups = []
     for ds in datasets:
         grid.check(ds)
-        lookup = np.full(_lookup_size(ds.dtypes[band - 1]), len(classes), dtype=np.int32)  # len(classes) = invalid
+        lookup = np.full(_lookup_size(ds.dtypes[band - 1], classes), len(classes), dtype=np.int32)  # len(classes) = invalid
         lookup[np.asarray(classes)] = np.arange(len(classes), dtype=np.int32)
         lookups.append(lookup)
     k = len(classes) + 1
@@ -322,10 +322,21 @@ def _check_key_range(n: int) -> None:
         raise ValueError(f"{n:,} cell x class bins do not fit 32-bit keys")
 
 
-def _lookup_size(dtype: str) -> int:
-    if np.dtype(dtype).kind != "u" or np.dtype(dtype).itemsize > 2:
-        raise ValueError(f"categorical rasters must be unsigned 8- or 16-bit, got {dtype}")
-    return 1 << (8 * np.dtype(dtype).itemsize)
+def _lookup_size(dtype: str, classes: list[int]) -> int:
+    """Length of the value → class lookup, indexed by raw pixel values.
+
+    Signed 16-bit rasters (LANDFIRE: negative fill codes) are allowed when every class is
+    non-negative: a negative pixel indexes the lookup's upper half (numpy wraps negative
+    indexes), which holds no class, so it counts as invalid.
+    """
+    dt = np.dtype(dtype)
+    if dt.itemsize > 2 or dt.kind not in "ui" or (dt.kind == "i" and dt.itemsize != 2):
+        raise ValueError(f"categorical rasters must be unsigned 8- or 16-bit, or signed 16-bit, got {dtype}")
+    size = 1 << (8 * dt.itemsize)
+    lo, hi = (0, size - 1) if dt.kind == "u" else (0, size // 2 - 1)
+    if len(classes) and (min(classes) < lo or max(classes) > hi):
+        raise ValueError(f"classes must lie in {lo}–{hi} for {dtype}")
+    return size
 
 
 def rollup(table: pa.Table, members: dict[int, np.ndarray], group_cols: list[str], sum_cols: list[str]) -> dict[int, pa.Table]:
