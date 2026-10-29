@@ -8,13 +8,13 @@ import time
 from datetime import datetime, timezone
 
 from treemap_pipeline import config, io
-from treemap_pipeline.build import canopy, geo, hex_base, landcover
-from treemap_pipeline.sources import census, nlcd, tcc
+from treemap_pipeline.build import canopy, geo, hex_base, landcover, zone
+from treemap_pipeline.sources import bps, census, nlcd, phzm, tcc
 
 # Fetch steps download or clip sources; the others only build, so P1 (perf-budget,
 # downloads excluded) is the sum of the build steps.
-STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover", "fetch_tcc", "canopy")
-FETCH_STEPS = {"fetch_nlcd", "fetch_tcc"}
+STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover", "fetch_tcc", "canopy", "fetch_bps", "fetch_phzm", "zone")
+FETCH_STEPS = {"fetch_nlcd", "fetch_tcc", "fetch_bps", "fetch_phzm"}
 # Years clipped at once by a fetch step (range reads; a few at a time is polite to the host).
 FETCH_WORKERS = 3
 
@@ -81,6 +81,17 @@ def run_canopy() -> list[dict]:
     return write_table(tables, "hex_canopy", ["tcc"])
 
 
+def run_fetch_phzm() -> list[dict]:
+    path = phzm.clip(pilot_geometry(), hex_base.members((5,))[5])
+    print(f"  phzm: half-zone clip {path}")
+    return []
+
+
+def run_zone() -> list[dict]:
+    clip = clips_or_exit(phzm.SOURCE)[phzm.YEAR]
+    return write_table(zone.build_zone(clip, hex_base.members()), "hex_zone", ["phzm"])
+
+
 RUNNERS = {
     "geo": run_geo,
     "hex_base": run_hex_base,
@@ -88,6 +99,9 @@ RUNNERS = {
     "landcover": run_landcover,
     "fetch_tcc": lambda: fetch(tcc.SOURCE),
     "canopy": run_canopy,
+    "fetch_bps": lambda: fetch(bps.SOURCE),
+    "fetch_phzm": run_fetch_phzm,
+    "zone": run_zone,
 }
 
 
