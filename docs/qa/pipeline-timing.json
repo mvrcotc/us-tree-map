@@ -1,10 +1,22 @@
 {
- "run_at": "2026-10-28T03:15:27+00:00",
+ "run_at": "2026-10-29T15:37:30+00:00",
  "pilot": "WI",
+ "steps": [
+  "landcover"
+ ],
+ "full_run": false,
  "steps_s": {
-  "geo": 2.11,
-  "hex_base": 6.49
+  "landcover": 321.35
  },
- "total_s": 8.6,
- "note": "perf-budget P1: downloads included on a first run"
+ "total_s": 321.35,
+ "build_s": 321.35,
+ "peak_rss_mb": 1673,
+ "by_step": {
+  "landcover": {
+   "s": 321.35,
+   "run_at": "2026-10-29T15:37:30+00:00",
+   "peak_rss_mb": 1673
+  }
+ },
+ "note": "perf-budget P1 = build_s when full_run is true (fetch steps excluded); one layer \u2264 10 min per by_step entry; geo and hex_base include the small Census download on a first run"
 }

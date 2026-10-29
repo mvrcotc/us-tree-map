@@ -1,7 +1,8 @@
 """`hex_landcover` (one row per hex per year, Annual NLCD 1.2) and `hex_base.land_frac`.
 
-Data contract: Tables → `hex_landcover`. Fractions are shares of valid pixels and sum to
-1 per hex-year; `valid_frac` is valid pixels over all pixels in the hex. A hex-year with
+Data contract: Tables → `hex_landcover`. Fractions are shares of valid pixels, rounded to
+3 decimals by largest remainder so they still sum to exactly 1 per hex-year (L5);
+`valid_frac` is valid pixels over all pixels in the hex. A hex-year with
 no valid pixel gets NULL fractions, never 0 (hard rule 1).
 """
 
@@ -35,6 +36,10 @@ SCHEMA = pa.schema(
     + [("valid_frac", pa.float32())]
 )
 
+
+# Fractions are stored in steps of 1/DECIMALS_SCALE (0.1%); full float precision fails
+# perf-budget L5 (data contract → `hex_landcover`, Marco, Oct 29, 2026).
+DECIMALS_SCALE = 1000
 
 # Years counted per pass over the cell index: each pass reads the index once (the slow
 # read), and memory stays bounded (perf-budget → Pipeline rules: never all years at once).
@@ -70,7 +75,7 @@ def build_landcover(clips: dict[int, Path], members: dict[int, np.ndarray], cach
 def _fractions(counts: pa.Table, totals: pa.Table, year: int) -> pa.Table:
     c, t = counts, totals  # noqa: F841 (read by DuckDB)
     shares = ",\n".join(
-        f"(sum(c.n) FILTER (WHERE c.class IN ({', '.join(map(str, cls))})) / nullif(sum(c.n), 0))::FLOAT AS {name}" for name, cls in GROUPS.items()
+        f"(sum(c.n) FILTER (WHERE c.class IN ({', '.join(map(str, cls))})) / nullif(sum(c.n), 0)) AS {name}" for name, cls in GROUPS.items()
     )
     sql = f"""
         SELECT t.h3, t.res, t.p3, {int(year)}::SMALLINT AS year,
@@ -82,7 +87,34 @@ def _fractions(counts: pa.Table, totals: pa.Table, year: int) -> pa.Table:
         ) v USING (h3)
         ORDER BY t.h3
     """
-    return h3util.con().sql(sql).to_arrow_table().cast(SCHEMA)
+    return round_shares(h3util.con().sql(sql).to_arrow_table()).cast(SCHEMA)
+
+
+def round_shares(t: pa.Table, scale: int = DECIMALS_SCALE) -> pa.Table:
+    """Round each row's GROUPS shares to steps of 1/scale by largest remainder.
+
+    Floor every share, then give the leftover steps to the largest remainders (ties go to
+    the earlier column), so a row's rounded shares sum to exactly `scale` steps. NULL rows
+    (no valid pixel) stay NULL.
+    """
+    names = list(GROUPS)
+    shares = np.column_stack([t[n].to_numpy(zero_copy_only=False) for n in names]).astype(np.float64)
+    ok = ~np.isnan(shares).any(axis=1)
+    # Shares must already sum to 1: a gap means an NLCD class is missing from GROUPS.
+    assert np.allclose(shares[ok].sum(axis=1), 1, atol=1e-6), "landcover shares do not sum to 1"
+    scaled = shares[ok] * scale
+    steps = np.floor(scaled + 1e-9)  # 1e-9: a share of exactly k/scale must not floor to k−1
+    left = (scale - steps.sum(axis=1)).astype(np.int64)
+    assert ((left >= 0) & (left <= len(names))).all(), "largest-remainder rounding out of range"
+    order = np.argsort(-(scaled - steps), axis=1, kind="stable")
+    rank = np.argsort(order, axis=1, kind="stable")
+    steps += rank < left[:, None]
+    rounded = np.full_like(shares, np.nan)
+    rounded[ok] = steps / scale
+    for j, n in enumerate(names):
+        col = pa.array(rounded[:, j], mask=~ok, type=pa.float64())
+        t = t.set_column(t.column_names.index(n), n, col)
+    return t
 
 
 def land_frac(landcover: dict[int, pa.Table], year: int) -> dict[int, pa.Table]:

@@ -50,7 +50,7 @@ Types are DuckDB/Parquet types. All hex tables also have `h3`, `res`, `p3`.
 | `area_km2` | FLOAT | H3 cell area |
 | `state_fips` | VARCHAR | majority state |
 | `county_fips` | VARCHAR | majority county (5 digits) |
-| `land_frac` | FLOAT | non-water share (latest NLCD year) |
+| `land_frac` | FLOAT | non-water share (latest NLCD year); 1 − `frac_water`, so a multiple of 0.001 |
 | `in_atlas` | BOOLEAN | hex center inside Tree Atlas model coverage |
 | `elev_m` | FLOAT | mean elevation in meters (`dem`); used by landscape mode |
 
@@ -68,7 +68,7 @@ Types are DuckDB/Parquet types. All hex tables also have `h3`, `res`, `p3`.
 BpS code → group mapping lives in `pipeline/mappings/bps_groups.csv` (one row per code, with the LANDFIRE vegetation-group attribute it came from). Marco reviews it in Phase 1.
 
 ### `hex_landcover` (one row per hex per year, 1985–2025, Annual NLCD)
-Fractions of valid pixels; they sum to 1 (± 1e-6).
+Fractions of valid pixels, rounded to 3 decimals (steps of 0.1%) by largest remainder, so each hex-year's fractions still sum to 1 (± 1e-6). Full float precision made res-7 chunks up to 2.2 MB and failed perf-budget L5 (Marco, Oct 29, 2026). `valid_frac` is not rounded.
 | column | NLCD classes |
 | --- | --- |
 | `frac_forest` | 41, 42, 43 |

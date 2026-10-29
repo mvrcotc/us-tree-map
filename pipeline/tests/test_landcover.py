@@ -95,7 +95,47 @@ def test_matches_naive_count(built, clips, members, tmp_path_factory):
     row = t.filter(pc.equal(t["h3"], pa.scalar(target, pa.uint64())))
     assert row["valid_frac"][0].as_py() == pytest.approx(len(valid) / len(vals), rel=1e-6)
     for name, cls in GROUPS.items():
-        assert row[name][0].as_py() == pytest.approx(np.isin(valid, cls).mean(), rel=1e-5)
+        # Rounded to 0.1% by largest remainder: within one step of the exact share.
+        assert row[name][0].as_py() == pytest.approx(np.isin(valid, cls).mean(), abs=1 / landcover.DECIMALS_SCALE + 1e-6)
+
+
+def test_fractions_are_whole_steps(built):
+    for t in built.values():
+        fr = np.column_stack([t[name].to_numpy(zero_copy_only=False) for name in GROUPS]).astype(float)
+        ok = ~np.isnan(fr).any(axis=1)
+        steps = fr[ok] * landcover.DECIMALS_SCALE
+        assert np.allclose(steps, np.round(steps), atol=1e-3)
+        assert (np.round(steps).sum(axis=1) == landcover.DECIMALS_SCALE).all()
+
+
+def test_round_shares_largest_remainder():
+    names = list(GROUPS)
+    rows = [
+        [1 / 3, 1 / 3, 1 / 3] + [0.0] * 7,  # 333+333+333 = 999: the tie goes to the first column
+        [0.1234, 0.2345, 0.6421] + [0.0] * 7,  # remainders .4 .5 .1 → the 0.2345 share rounds up
+        [0.25, 0.75] + [0.0] * 8,  # exact values stay
+        [None] * 10,  # no valid pixel: NULL stays NULL
+        [0.057, 0.943] + [0.0] * 8,  # 0.057 * 1000 = 56.999…: must not floor to 56
+        [0.2] * 5 + [0.0] * 5,  # exact fifths stay at 0.2
+        [1 / 7] * 7 + [0.0] * 3,  # 142.857… each: 6 leftover steps go to the first 6 columns
+    ]
+    t = pa.table({n: pa.array([r[j] for r in rows], pa.float64()) for j, n in enumerate(names)})
+    out = landcover.round_shares(t)
+    got = [[out[n][i].as_py() for n in names] for i in range(len(rows))]
+    assert got[0][:3] == [0.334, 0.333, 0.333]
+    assert got[1][:3] == [0.123, 0.235, 0.642]
+    assert got[2][:2] == [0.25, 0.75] and got[2][2:] == [0.0] * 8
+    assert got[3] == [None] * 10
+    assert got[4][:2] == [0.057, 0.943]
+    assert got[5][:5] == [0.2] * 5
+    assert got[6][:7] == [0.143] * 6 + [0.142]
+
+
+def test_round_shares_rejects_shares_not_summing_to_one():
+    names = list(GROUPS)
+    t = pa.table({n: pa.array([0.5 if j == 0 else 0.0], pa.float64()) for j, n in enumerate(names)})
+    with pytest.raises(AssertionError, match="do not sum to 1"):
+        landcover.round_shares(t)
 
 
 def test_all_nodata_hex_is_null(built, nodata_hex):
