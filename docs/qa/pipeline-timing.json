@@ -1,18 +1,18 @@
 {
- "run_at": "2026-10-29T15:50:49+00:00",
+ "run_at": "2026-10-29T16:05:54+00:00",
  "pilot": "WI",
  "steps": [
-  "fetch_phzm",
-  "zone"
+  "bps_mapping",
+  "bps"
  ],
  "full_run": false,
  "steps_s": {
-  "fetch_phzm": 1.67,
-  "zone": 1.61
+  "bps_mapping": 5.95,
+  "bps": 529.46
  },
- "total_s": 3.28,
- "build_s": 1.61,
- "peak_rss_mb": 499,
+ "total_s": 535.46,
+ "build_s": 535.41,
+ "peak_rss_mb": 746,
  "by_step": {
   "landcover": {
    "s": 321.35,
@@ -27,6 +27,21 @@
   "zone": {
    "s": 1.61,
    "run_at": "2026-10-29T15:50:49+00:00",
+   "peak_rss_mb": null
+  },
+  "fetch_bps": {
+   "s": 698.31,
+   "run_at": "2026-10-29T15:55:12+00:00",
+   "peak_rss_mb": 513
+  },
+  "bps_mapping": {
+   "s": 5.95,
+   "run_at": "2026-10-29T16:05:54+00:00",
+   "peak_rss_mb": null
+  },
+  "bps": {
+   "s": 529.46,
+   "run_at": "2026-10-29T16:05:54+00:00",
    "peak_rss_mb": null
   }
  },
