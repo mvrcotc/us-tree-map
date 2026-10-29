@@ -1,5 +1,6 @@
 """sources.zipclip (via nlcd and tcc): zip handling, range reads and clips on synthetic files (no network)."""
 
+import dataclasses
 import io
 import json
 import os
@@ -112,8 +113,48 @@ def test_remote_stored_zip_gives_a_vsicurl_path(raw, tmp_path, monkeypatch):
 def test_remote_deflated_zip_is_refused(raw, tmp_path, monkeypatch):
     make_zip(tmp_path / "remote.zip", zipfile.ZIP_DEFLATED)
     monkeypatch.setattr(zipclip, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=True))
-    with pytest.raises(ValueError, match="compresses its GeoTIFF"):
+    with pytest.raises(zipclip.CompressedZip, match="compresses its GeoTIFF"):
         SRC.source_path(2025)
+
+
+def flaky(blob: bytes, cut: int):
+    """Serve ranges, but drop the connection after `cut` bytes of each response."""
+    def fake_open(req):
+        a = int(req.get_header("Range").removeprefix("bytes=").split("-")[0])
+        return Cutoff(blob[a:], 206, {"Content-Range": f"bytes {a}-{len(blob) - 1}/{len(blob)}"}, cut)
+    return fake_open
+
+
+class Cutoff(FakeResponse):
+    def __init__(self, body, status, headers, cut):
+        super().__init__(body, status, headers)
+        self.cut, self.sent = cut, 0
+
+    def read(self, n=-1):
+        if self.sent >= self.cut:
+            raise ConnectionResetError("dropped")
+        data = super().read(min(n, self.cut - self.sent) if n > 0 else self.cut - self.sent)
+        self.sent += len(data)
+        return data
+
+
+def test_deflated_zip_is_downloaded_with_resume_then_clipped(raw, tmp_path, cover, monkeypatch):
+    data = make_zip(tmp_path / "remote.zip", zipfile.ZIP_DEFLATED)
+    blob = (tmp_path / "remote.zip").read_bytes()
+    monkeypatch.setattr(zipclip, "_open", flaky(blob, cut=len(blob) // 3 + 1))
+    path = SRC.clip(2025, GEOMETRY, cover)
+    assert (raw / SRC.zip_name(2025)).read_bytes() == blob
+    assert not (raw / (SRC.zip_name(2025) + ".part")).exists()
+    with rasterio.open(path) as clip:
+        assert clip.read(1).size > 0 and set(np.unique(clip.read(1))) <= set(np.unique(data))
+
+
+def test_download_not_allowed_raises(raw, tmp_path, cover, monkeypatch):
+    make_zip(tmp_path / "remote.zip", zipfile.ZIP_DEFLATED)
+    monkeypatch.setattr(zipclip, "_open", serve((tmp_path / "remote.zip").read_bytes(), honor_range=True))
+    strict = dataclasses.replace(SRC, download_if_compressed=False)
+    with pytest.raises(zipclip.CompressedZip):
+        strict.clip(2025, GEOMETRY, cover)
 
 
 def test_tcc_names_match_the_gateway():

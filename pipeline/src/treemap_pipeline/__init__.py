@@ -2,6 +2,8 @@
 
 import argparse
 import json
+import resource
+import sys
 import time
 from datetime import datetime, timezone
 
@@ -105,14 +107,27 @@ def main() -> None:
         print(f"  done in {timings[step]} s")
 
     config.QA.mkdir(parents=True, exist_ok=True)
+    path = config.QA / "pipeline-timing.json"
+    run_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    # ru_maxrss is bytes on macOS, KiB on Linux; it is the process peak, so per step only
+    # when one step runs alone.
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1 << 20 if sys.platform == "darwin" else 1 << 10)
+    try:
+        by_step = json.loads(path.read_text()).get("by_step", {})
+    except (OSError, ValueError):
+        by_step = {}
+    for step, t in timings.items():
+        by_step[step] = {"s": t, "run_at": run_at, "peak_rss_mb": round(rss) if len(steps) == 1 else None}
     report = {
-        "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "run_at": run_at,
         "pilot": config.PILOT_STUSPS,
         "steps": steps,
         "full_run": steps == list(STEPS),
         "steps_s": timings,
         "total_s": round(time.perf_counter() - started, 2),
         "build_s": round(sum(t for s, t in timings.items() if s not in FETCH_STEPS), 2),
-        "note": "perf-budget P1 = build_s when full_run is true (fetch steps excluded); geo and hex_base include the small Census download on a first run",
+        "peak_rss_mb": round(rss),
+        "by_step": by_step,
+        "note": "perf-budget P1 = build_s when full_run is true (fetch steps excluded); one layer ≤ 10 min per by_step entry; geo and hex_base include the small Census download on a first run",
     }
-    (config.QA / "pipeline-timing.json").write_text(json.dumps(report, indent=1) + "\n")
+    path.write_text(json.dumps(report, indent=1) + "\n")

@@ -265,7 +265,7 @@ def continuous_sums_many(datasets: list[rasterio.DatasetReader], grid: CellGrid,
     for ds in datasets:
         grid.check(ds)
     ncell = len(grid.cells) + 1
-    packed = all(np.dtype(ds.dtypes[band - 1]).kind in "ui" for ds in datasets) and valid_min >= 0
+    packed = all(np.dtype(ds.dtypes[band - 1]).kind in "ui" for ds in datasets) and valid_min >= 0 and np.isfinite(valid_max)
     totals = [np.zeros(ncell, dtype=np.float64) for _ in datasets]
     n_valid = [np.zeros(ncell, dtype=np.int64) for _ in datasets]
     n_total = np.zeros(ncell, dtype=np.int64)
@@ -291,8 +291,9 @@ def continuous_sums_many(datasets: list[rasterio.DatasetReader], grid: CellGrid,
             idx = np.asarray(index[r0:r1]).ravel().astype(np.int32)
             strip_total = np.bincount(idx, minlength=ncell)
             # Packing is exact only while a cell's strip sum stays below PACK.
-            if packed and strip_total.max() * valid_max >= PACK:
-                raise ValueError(f"cells too large to pack ({strip_total.max()} px × {valid_max})")
+            # Bin 0 (no cell) is dropped later, so it doesn't count here.
+            if packed and strip_total[1:].max() * valid_max >= PACK:
+                raise ValueError(f"cells too large to pack ({strip_total[1:].max()} px × {valid_max})")
             n_total += strip_total
             for total, nv, (n, s) in zip(totals, n_valid, pool.map(lambda ds: reduce(ds, idx, win), datasets)):
                 nv += n

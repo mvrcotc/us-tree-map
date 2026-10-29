@@ -5,6 +5,7 @@ import os
 import h3.api.basic_int as h3
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pytest
 import rasterio
 from pyproj import Transformer
@@ -262,3 +263,45 @@ def test_many_equals_one_at_a_time(tif, grid):
         assert many_c[0].equals(raster.continuous_sums(a, grid, 0, 100, band=2)) and many_c[1].equals(many_c[0])
         with pytest.raises(ValueError, match="its own handle"):
             raster.continuous_sums_many([a, a], grid, 0, 100, band=2)
+
+
+def _int_raster(path, data, nodata=None, dtype="uint16"):
+    x, y = Transformer.from_crs("EPSG:4326", "EPSG:5070", always_xy=True).transform(LNG, LAT)
+    profile = dict(driver="GTiff", width=data.shape[1], height=data.shape[0], count=1, dtype=dtype, crs="EPSG:5070", transform=from_origin(round(x) - 6000, round(y) + 6000, 30, 30), nodata=nodata)
+    with rasterio.open(path, "w", **profile) as ds:
+        ds.write(data.astype(dtype), 1)
+    return path
+
+
+def test_packed_equals_unpacked(tmp_path):
+    """The packed integer path gives the same sums and counts as the two-bincount float path."""
+    data = np.random.default_rng(7).integers(0, 1000, size=(400, 400))
+    ints = _int_raster(tmp_path / "i.tif", data, nodata=999)  # nodata inside the valid range
+    floats = _int_raster(tmp_path / "f.tif", data, nodata=999, dtype="float64")
+    with rasterio.open(ints) as a, rasterio.open(floats) as b:
+        g = raster.cell_grid(a, None, cache_dir=tmp_path / "g")
+        packed = raster.continuous_sums(a, g, 0, 999)
+        plain = raster.continuous_sums(b, g, 0, 999)
+    assert packed.equals(plain)
+    flat = data.ravel()
+    assert pc.sum(packed["n_valid"]).as_py() == int(((flat != 999)).sum())
+    assert pc.sum(packed["sum"]).as_py() == float(flat[flat != 999].sum())
+
+
+def test_negative_valid_min_takes_the_plain_path(tmp_path):
+    data = np.random.default_rng(8).integers(-50, 50, size=(400, 400))
+    path = _int_raster(tmp_path / "s.tif", data, dtype="int16")
+    with rasterio.open(path) as a:
+        g = raster.cell_grid(a, None, cache_dir=tmp_path / "g")
+        t = raster.continuous_sums(a, g, -50, 49)
+    assert pc.sum(t["sum"]).as_py() == float(data.sum())
+
+
+def test_pack_overflow_raises(tmp_path, monkeypatch):
+    data = np.full((400, 400), 60000)
+    path = _int_raster(tmp_path / "big.tif", data)
+    monkeypatch.setattr(raster, "PACK", 1 << 16)  # a res-8 cell holds hundreds of pixels
+    with rasterio.open(path) as a:
+        g = raster.cell_grid(a, None, cache_dir=tmp_path / "g")
+        with pytest.raises(ValueError, match="too large to pack"):
+            raster.continuous_sums(a, g, 0, 65535)

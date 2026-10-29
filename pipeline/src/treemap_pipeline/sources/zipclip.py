@@ -1,9 +1,11 @@
 """Clip yearly CONUS rasters that ship as one zipped GeoTIFF per year to the pilot window.
 
 Two ways in, tried in order:
-1. A local zip in `data/raw/{source}/` (downloaded whole, e.g. by hand when the host is slow).
+1. A local zip in `data/raw/{source}/` (downloaded whole, by hand or by `download`).
 2. Range reads of the zip on the host (`/vsizip//vsicurl/`), which fetch only the clip window.
-   Needs the GeoTIFF stored uncompressed in the zip and a host that honors `Range`.
+   Needs the GeoTIFF stored uncompressed in the zip and a host that honors `Range`. When the
+   zip compresses it and the source allows it (`download_if_compressed`), the whole zip is
+   downloaded to `data/raw/{source}/` instead (resumable) and kept as the raw input.
 Either way the result is a clipped GeoTIFF in `data/raw/{source}/clip/`, on the source's own
 grid (same CRS and pixel alignment), so every year shares one cell grid. A sidecar JSON
 records the clip window; a clip is reused only if the window still matches.
@@ -41,6 +43,12 @@ GDAL_ENV = {
     "GDAL_HTTP_USERAGENT": USER_AGENT,
 }
 RETRIES = 4
+DOWNLOAD_ATTEMPTS = 20  # resumed range requests per zip before giving up
+CHUNK = 4 << 20
+
+
+class CompressedZip(ValueError):
+    """The remote zip compresses its GeoTIFF, so range reads would fetch all of it."""
 
 
 @dataclass(frozen=True)
@@ -52,6 +60,7 @@ class ZipRaster:
     years: range
     zip_name: Callable[[int], str]
     clip_stem: Callable[[int], str]
+    download_if_compressed: bool = False
 
     def raw_dir(self) -> Path:
         return config.RAW / self.source
@@ -69,15 +78,54 @@ class ZipRaster:
         with zipfile.ZipFile(io.BufferedReader(HttpRange(url, self.raw_dir()), 1 << 16)) as zf:
             member = _tif_member(zf)
         if member.compress_type != zipfile.ZIP_STORED:
-            raise ValueError(f"{self.zip_name(year)} compresses its GeoTIFF, so range reads would fetch it all; download the zip to {self.raw_dir()} instead")
+            raise CompressedZip(f"{self.zip_name(year)} compresses its GeoTIFF, so range reads would fetch it all; download the zip to {self.raw_dir()} instead")
         return f"/vsizip//vsicurl/{url}/{member.filename}"
+
+    def download(self, year: int) -> Path:
+        """Download the year's zip whole to data/raw/{source}/, resuming a partial file."""
+        dest = self.raw_dir() / self.zip_name(year)
+        part = dest.with_suffix(".zip.part")
+        url = f"{self.base_url}/{self.zip_name(year)}"
+        size = None
+        for _ in range(DOWNLOAD_ATTEMPTS):
+            have = part.stat().st_size if part.exists() else 0
+            try:
+                with _open(urllib.request.Request(url, headers={"Range": f"bytes={have}-"})) as r:
+                    if r.status == 206:
+                        size = int(r.headers["Content-Range"].rsplit("/", 1)[1])
+                        mode = "ab"
+                    else:  # range ignored: start over
+                        size, mode = int(r.headers["Content-Length"]), "wb"
+                    with open(part, mode) as f:
+                        while chunk := r.read(CHUNK):
+                            f.write(chunk)
+            except (OSError, urllib.error.URLError, TimeoutError):
+                continue  # resume from what arrived
+            if size is not None and part.stat().st_size == size:
+                break
+        else:
+            raise OSError(f"{url}: download incomplete after {DOWNLOAD_ATTEMPTS} attempts")
+        with zipfile.ZipFile(part) as zf:
+            bad = zf.testzip()  # CRC check of every member
+        if bad is not None:
+            part.unlink()
+            raise OSError(f"{url}: {bad} failed its CRC check; partial file removed, run again")
+        part.rename(dest)
+        return dest
 
     def clip(self, year: int, geometry: dict, cover_cells: np.ndarray) -> Path:
         """Write the year's clip (state + 10 km, whole res-5 hexes) unless a matching one exists."""
         dest = self.clip_path(year)
         sidecar = dest.with_suffix(".window.json")
         dest.parent.mkdir(parents=True, exist_ok=True)
-        with rasterio.Env(**GDAL_ENV), rasterio.open(self.source_path(year)) as src:
+        try:
+            path = self.source_path(year)
+        except CompressedZip:
+            if not self.download_if_compressed:
+                raise
+            self.download(year)
+            path = self.source_path(year)
+        with rasterio.Env(**GDAL_ENV), rasterio.open(path) as src:
             window = raster.clip_window(src, geometry, cover_cells)
             record = _window_record(src, window)
             if dest.exists() and _read_record(sidecar) == record:
