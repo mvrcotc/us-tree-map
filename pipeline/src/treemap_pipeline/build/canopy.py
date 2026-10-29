@@ -19,8 +19,9 @@ SCHEMA = pa.schema(
     [("h3", pa.uint64()), ("res", pa.int8()), ("p3", pa.uint64()), ("year", pa.int16()), ("canopy_frac", pa.float32()), ("valid_frac", pa.float32())]
 )
 
-# Years summed per pass over the cell index (see build.landcover.YEARS_PER_PASS).
-YEARS_PER_PASS = 8
+# Years summed per pass over the cell index. Continuous sums keep two small arrays per
+# year, so all 41 years fit in one pass and the 1.3 GB index is read once.
+YEARS_PER_PASS = 41
 
 
 def build_canopy(clips: dict[int, Path], members: dict[int, np.ndarray], cache_dir: Path = config.WORK / "cellgrid") -> dict[int, pa.Table]:
@@ -37,6 +38,7 @@ def build_canopy(clips: dict[int, Path], members: dict[int, np.ndarray], cache_d
         finally:
             for ds in datasets:
                 ds.close()
+        print(f"  hex_canopy: summed {batch[0]}–{batch[-1]}", flush=True)
         for year, s in zip(batch, sums):
             rolled = raster.rollup(s, members, [], ["sum", "n_valid", "n_total"])
             if i == 0 and year == batch[0]:

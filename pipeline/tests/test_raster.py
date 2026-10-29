@@ -257,6 +257,8 @@ def test_many_equals_one_at_a_time(tif, grid):
         many, totals = raster.categorical_counts_many([a, b], grid, CLASSES)
         one, totals_one = raster.categorical_counts(a, grid, CLASSES)
     assert many[0].equals(one) and many[1].equals(one) and totals.equals(totals_one)
-    with rasterio.open(tif["cont"]) as a:
-        many_c = raster.continuous_sums_many([a, a], grid, 0, 100, band=2)
+    with rasterio.open(tif["cont"]) as a, rasterio.open(tif["cont"]) as b:
+        many_c = raster.continuous_sums_many([a, b], grid, 0, 100, band=2)
         assert many_c[0].equals(raster.continuous_sums(a, grid, 0, 100, band=2)) and many_c[1].equals(many_c[0])
+        with pytest.raises(ValueError, match="its own handle"):
+            raster.continuous_sums_many([a, a], grid, 0, 100, band=2)

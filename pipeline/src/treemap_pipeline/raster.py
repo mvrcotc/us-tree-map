@@ -19,6 +19,7 @@
 import hashlib
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,6 +36,15 @@ from treemap_pipeline import config, h3util
 
 BUFFER_M = 10_000
 STRIP_ROWS = 2048
+# Rows per strip in the reducers: smaller, so several years' temporaries stay well under
+# 1 GB on an 8 GB machine (perf-budget → Pipeline rules: bounded memory).
+REDUCE_ROWS = 512
+# Datasets reduced at once per strip. Reads and bincount release the GIL, so threads scale
+# (4 threads ≈ 3.6× on TCC, Oct 28, 2026); each dataset stays on one thread per strip.
+REDUCE_THREADS = 4
+# Integer rasters pack count and value into one float64 weight, (1 << 24) + v, so one
+# bincount gives both; exact while every cell's value sum stays below 1 << 24.
+PACK = 1 << 24
 # Pixel index 0 means "no cell"; cell k is stored as k + 1.
 NO_CELL = 0
 
@@ -177,8 +187,8 @@ def _build_cell_grid(crs, transform, shape: tuple[int, int], res: int, index_pat
 
 def _strips(grid: CellGrid):
     height, _ = grid.shape
-    for r0 in range(0, height, STRIP_ROWS):
-        r1 = min(r0 + STRIP_ROWS, height)
+    for r0 in range(0, height, REDUCE_ROWS):
+        r1 = min(r0 + REDUCE_ROWS, height)
         win = Window(grid.window.col_off, grid.window.row_off + r0, grid.window.width, r1 - r0)
         yield r0, r1, win
 
@@ -198,6 +208,7 @@ def categorical_counts_many(datasets: list[rasterio.DatasetReader], grid: CellGr
     count rows: its fractions are NULL, never 0 (hard rule 1). Each block of the cell index is
     read once and counted for every dataset (the index is the slow read).
     """
+    _check_distinct(datasets)
     lookups = []
     for ds in datasets:
         grid.check(ds)
@@ -209,13 +220,17 @@ def categorical_counts_many(datasets: list[rasterio.DatasetReader], grid: CellGr
     _check_key_range(ncell * k)
     counts = [np.zeros(ncell * k, dtype=np.int32) for _ in datasets]  # per-cell counts are small; keeps 8 years ≈ 250 MB
     n_total = np.zeros(ncell, dtype=np.int64)
+    def count(ds, lookup, base, win):
+        return np.bincount((base + lookup[ds.read(band, window=win)]).ravel(), minlength=ncell * k).astype(np.int32)
+
     index = grid.index()
-    for r0, r1, win in _strips(grid):
-        idx = np.asarray(index[r0:r1]).astype(np.int32)
-        n_total += np.bincount(idx.ravel(), minlength=ncell)
-        base = idx * k
-        for ds, lookup, acc in zip(datasets, lookups, counts):
-            acc += np.bincount((base + lookup[ds.read(band, window=win)]).ravel(), minlength=ncell * k).astype(np.int32)
+    with ThreadPoolExecutor(REDUCE_THREADS) as pool:
+        for r0, r1, win in _strips(grid):
+            idx = np.asarray(index[r0:r1]).astype(np.int32)
+            n_total += np.bincount(idx.ravel(), minlength=ncell)
+            base = idx * k
+            for acc, c in zip(counts, pool.map(lambda ds, lookup: count(ds, lookup, base, win), datasets, lookups)):
+                acc += c
     has = n_total[1:] > 0
     totals = pa.table({"h3": pa.array(grid.cells[has], pa.uint64()), "n_total": pa.array(n_total[1:][has], pa.int64())})
     tables = []
@@ -246,24 +261,42 @@ def continuous_sums_many(datasets: list[rasterio.DatasetReader], grid: CellGrid,
     `n_total` only. `sum` is NULL where `n_valid` is 0, so means come out NULL, never 0
     (hard rule 1). Each block of the cell index is read once for every dataset.
     """
+    _check_distinct(datasets)
     for ds in datasets:
         grid.check(ds)
     ncell = len(grid.cells) + 1
+    packed = all(np.dtype(ds.dtypes[band - 1]).kind in "ui" for ds in datasets) and valid_min >= 0
     totals = [np.zeros(ncell, dtype=np.float64) for _ in datasets]
     n_valid = [np.zeros(ncell, dtype=np.int64) for _ in datasets]
     n_total = np.zeros(ncell, dtype=np.int64)
+
+    def reduce(ds, idx, win):
+        v = ds.read(band, window=win).ravel()  # native dtype: no float64 copy of the strip
+        ok = (v >= valid_min) & (v <= valid_max)
+        if v.dtype.kind == "f":
+            ok &= ~np.isnan(v)
+        nodata = ds.nodatavals[band - 1]
+        if nodata is not None:
+            ok &= v != nodata
+        cell = idx[ok]
+        if packed:
+            both = np.bincount(cell, weights=v[ok] + float(PACK), minlength=ncell)
+            n = np.floor(both / PACK)
+            return n.astype(np.int64), both - n * PACK
+        return np.bincount(cell, minlength=ncell), np.bincount(cell, weights=v[ok], minlength=ncell)
+
     index = grid.index()
-    for r0, r1, win in _strips(grid):
-        idx = np.asarray(index[r0:r1]).ravel().astype(np.int32)
-        n_total += np.bincount(idx, minlength=ncell)
-        for ds, total, nv in zip(datasets, totals, n_valid):
-            v = ds.read(band, window=win).ravel().astype(np.float64)
-            ok = (v >= valid_min) & (v <= valid_max) & ~np.isnan(v)
-            nodata = ds.nodatavals[band - 1]
-            if nodata is not None:
-                ok &= v != nodata
-            nv += np.bincount(idx[ok], minlength=ncell)
-            total += np.bincount(idx[ok], weights=v[ok], minlength=ncell)
+    with ThreadPoolExecutor(REDUCE_THREADS) as pool:
+        for r0, r1, win in _strips(grid):
+            idx = np.asarray(index[r0:r1]).ravel().astype(np.int32)
+            strip_total = np.bincount(idx, minlength=ncell)
+            # Packing is exact only while a cell's strip sum stays below PACK.
+            if packed and strip_total.max() * valid_max >= PACK:
+                raise ValueError(f"cells too large to pack ({strip_total.max()} px × {valid_max})")
+            n_total += strip_total
+            for total, nv, (n, s) in zip(totals, n_valid, pool.map(lambda ds: reduce(ds, idx, win), datasets)):
+                nv += n
+                total += s
     has = n_total[1:] > 0
     return [
         pa.table(
@@ -276,6 +309,11 @@ def continuous_sums_many(datasets: list[rasterio.DatasetReader], grid: CellGrid,
         )
         for total, nv in zip(totals, n_valid)
     ]
+
+
+def _check_distinct(datasets: list) -> None:
+    if len({id(ds) for ds in datasets}) != len(datasets):
+        raise ValueError("each dataset needs its own handle: they are read in parallel threads")
 
 
 def _check_key_range(n: int) -> None:
