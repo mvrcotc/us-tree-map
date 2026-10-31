@@ -9,12 +9,12 @@ from datetime import datetime, timezone
 
 from treemap_pipeline import config, io
 from treemap_pipeline.build import bps as bps_build
-from treemap_pipeline.build import canopy, geo, hex_base, landcover, zone
+from treemap_pipeline.build import canopy, geo, hex_base, landcover, trees, zone
 from treemap_pipeline.sources import bps, census, nlcd, phzm, tcc, treemap
 
 # Fetch steps download or clip sources; the others only build, so P1 (perf-budget,
 # downloads excluded) is the sum of the build steps.
-STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover", "fetch_tcc", "canopy", "fetch_bps", "bps_mapping", "bps", "fetch_phzm", "zone", "fetch_treemap")
+STEPS = ("geo", "hex_base", "fetch_nlcd", "landcover", "fetch_tcc", "canopy", "fetch_bps", "bps_mapping", "bps", "fetch_phzm", "zone", "fetch_treemap", "trees")
 FETCH_STEPS = {"fetch_nlcd", "fetch_tcc", "fetch_bps", "fetch_phzm", "fetch_treemap"}
 # Years clipped at once by a fetch step (range reads; a few at a time is polite to the host).
 FETCH_WORKERS = 3
@@ -105,6 +105,12 @@ def run_zone() -> list[dict]:
     return write_table(zone.build_zone(clip, hex_base.members()), "hex_zone", ["phzm"])
 
 
+def run_trees() -> list[dict]:
+    clip = clips_or_exit(treemap.SOURCE)[treemap.YEAR]
+    tables = trees.build_trees(clip, treemap.tree_table(), hex_base.members())
+    return write_table(tables, "hex_trees", ["treemap"])
+
+
 RUNNERS = {
     "geo": run_geo,
     "hex_base": run_hex_base,
@@ -118,6 +124,7 @@ RUNNERS = {
     "fetch_phzm": run_fetch_phzm,
     "zone": run_zone,
     "fetch_treemap": lambda: fetch(treemap.SOURCE),
+    "trees": run_trees,
 }
 
 

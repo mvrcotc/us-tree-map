@@ -63,7 +63,8 @@ def test_clip_from_local_zip_is_on_the_source_grid(raw, cover):
 def test_clip_is_reused_only_when_the_window_matches(raw, cover):
     make_zip(raw / SRC.zip_name(2025), zipfile.ZIP_STORED)
     path = SRC.clip(2025, GEOMETRY, cover)
-    mtime = os.path.getmtime(path)
+    mtime = 1_000_000  # a known time: file times can be whole seconds on this drive
+    os.utime(path, (mtime, mtime))
     before = json.loads(path.with_suffix(".window.json").read_text())
     assert os.path.getmtime(SRC.clip(2025, GEOMETRY, cover)) == mtime
     moved = dict(GEOMETRY, coordinates=[[[x + 0.05, y] for x, y in GEOMETRY["coordinates"][0]]])
@@ -175,9 +176,9 @@ def test_unreadable_sidecar_means_reclip(raw, cover):
     make_zip(raw / SRC.zip_name(2025), zipfile.ZIP_STORED)
     path = SRC.clip(2025, GEOMETRY, cover)
     path.with_suffix(".window.json").write_text('{"crs": ')  # cut short by a crash
-    mtime = os.path.getmtime(path)
+    os.utime(path, (1_000_000, 1_000_000))  # file times can be whole seconds on this drive
     SRC.clip(2025, GEOMETRY, cover)
-    assert os.path.getmtime(path) != mtime
+    assert os.path.getmtime(path) != 1_000_000
     assert json.loads(path.with_suffix(".window.json").read_text())["width"] > 0
 
 

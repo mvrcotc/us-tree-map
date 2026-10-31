@@ -12,6 +12,7 @@ Tree table fields used (from `_variable_descriptions.csv`, Oct 29, 2026): `TM_ID
 line for woodland species).
 """
 
+import struct
 import zipfile
 
 import pyarrow as pa
@@ -29,7 +30,27 @@ SOURCE = ZipRaster(
     download_if_compressed=True,
 )
 TREE_TABLE = f"Data/TreeMap{YEAR}_CONUS_Tree_Table.csv"
+ATTRIBUTE_TABLE = f"Data/TreeMap{YEAR}_CONUS.tif.vat.dbf"
 LIVE = 1
+
+
+def attribute_table() -> pa.Table:
+    """The raster's attribute table: `TM_ID`, `BALIVE` (ft²/ac), `TPA_LIVE` per plot."""
+    with zipfile.ZipFile(SOURCE.raw_dir() / SOURCE.zip_name(YEAR)) as zf:
+        b = zf.read(ATTRIBUTE_TABLE)
+    rows, header, length = struct.unpack("<xxxxIHH", b[:12])
+    fields, offset = {}, 1  # each dBase record starts with a deletion flag
+    for i in range(32, header - 1, 32):
+        size = b[i + 16]
+        fields[b[i : i + 11].split(b"\0")[0].decode()] = (offset, size)
+        offset += size
+
+    def column(name: str) -> list[str]:
+        at, size = fields[name]
+        return [b[header + r * length + at : header + r * length + at + size].decode("latin1").strip() for r in range(rows)]
+
+    number = lambda name: [float(v) if v else None for v in column(name)]  # noqa: E731
+    return pa.table({"TM_ID": pa.array([int(float(v)) for v in column("TM_ID")], pa.int64()), "BALIVE": pa.array(number("BALIVE"), pa.float64()), "TPA_LIVE": pa.array(number("TPA_LIVE"), pa.float64())})
 
 
 def tree_table(columns=("TM_ID", "STATUSCD", "TPA_UNADJ", "SPCD", "DIA")) -> pa.Table:

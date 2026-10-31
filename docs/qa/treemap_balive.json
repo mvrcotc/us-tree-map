@@ -1,0 +1,15 @@
+{
+ "plots_compared": 64584,
+ "ours_over_BALIVE": {
+  "p01": 0.9999934388333206,
+  "median": 1.0000009758932498,
+  "p99": 1.0000074514702717
+ },
+ "ours_over_TPA_LIVE": {
+  "p01": 1.000000220533033,
+  "median": 1.0000102558033377,
+  "p99": 1.0001774173424827
+ },
+ "attribute_table_plots_without_tree_rows": 771,
+ "of_those_with_BALIVE_above_0": 771
+}
